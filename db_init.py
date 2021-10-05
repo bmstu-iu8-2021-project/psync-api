@@ -14,9 +14,6 @@ class Users(user_db.Model):
     mail = user_db.Column(user_db.String(100), unique=True, nullable=False)
     password = user_db.Column(user_db.String(100), nullable=False)
 
-    def __repr__(self):
-        return f'User: {self.login}, mail: {self.mail}'
-
 
 class Folders(user_db.Model):
     __tablename__ = 'Folders'
@@ -27,9 +24,6 @@ class Folders(user_db.Model):
     folder_version = user_db.Column(user_db.String(50), default='')
     folder_id = user_db.Column(user_db.Integer, default=-1)
 
-    def __repr__(self):
-        return f'Folder {self.folder} by {self.login} on {self.mac}'
-
 
 class Files(user_db.Model):
     __tablename__ = 'Files'
@@ -39,7 +33,4 @@ class Files(user_db.Model):
     folder_path = user_db.Column(user_db.String(200), user_db.ForeignKey('Folders.folder_path'))
     filename = user_db.Column(user_db.String(400), nullable=False)
     edited_at = user_db.Column(user_db.Float, nullable=False)
-    version = user_db.Column(user_db.String(50), default='')
-
-    def __repr__(self):
-        return f'File {self.filename} from {self.folder_path} by {self.login} on {self.mac}, version {self.version}'
+    file_version = user_db.Column(user_db.String(50), default='')

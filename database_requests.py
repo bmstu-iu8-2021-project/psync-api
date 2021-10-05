@@ -1,29 +1,28 @@
-import json
-from flask import request, jsonify
-import database
-from db_init import app, user_db, Users
-import jwt
 import datetime
+import json
 from functools import wraps
+
+import jwt
+from flask import request
+
+import database
+from db_init import app
 
 
 def token_required(req):
     @wraps(req)
     def decorated(*args, **kwargs):
-        #
-        # if 'Authorization' in request.headers:
-        #     token = request.headers['Authorization']
-        #     print(token)
-        # else:
-        #     return app.make_response(('Token is wrong', 403))
-        token = request.headers['Authorization']
-        token = token[token.find('": "')+4:token.find('"\\')]
+        if 'Authorization' not in request.headers:
+            return app.make_response(('Token was not find', 400))
+        token = json.loads(request.headers['Authorization'])['token']
+        if not token:
+            return app.make_response(('Token was not find', 400))
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'])
-        except Exception as e:
-            print(e)
+        except:
             return app.make_response(('Token is wrong', 403))
         return req(*args, **kwargs)
+
     return decorated
 
 
@@ -32,47 +31,39 @@ def auth():
     if request.method == 'GET':
         login = request.args['login']
         password = request.args['password']
+        token = ''
         if database.auth(login=login, password=password):
             token = jwt.encode({'user': login,
                                 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
                                 }, app.config['SECRET_KEY'])
-            return jsonify({'token': token.decode('UTF-8')})
-        return 'denied'
+            token = token.decode('UTF-8')
+        return json.dumps({'token': token})
 
 
-# @app.route('/check_email/', methods=['GET'])
-# def check_email():
-#     if request.method == 'GET':
-#         email = request.args['email']
-#         return str(user_db.session.query(Users).filter_by(mail=email).count() != 0)
-
-
-# @app.route('/check_login/', methods=['GET'])
-# def check_login():
-#     if request.method == 'GET':
-#         login = request.args['login']
-#         return str(user_db.session.query(Users).filter_by(login=login).count() != 0)
-
-@app.route('/test/')
-@token_required
-def test():
-    return 'True'
-
-
-@app.route('/get_password/', methods=['GET'])
-def get_password():
+@app.route('/find_login/', methods=['GET'])
+def find_login():
     if request.method == 'GET':
-        login = request.args['login']
-        usr = user_db.session.query(Users).filter_by(login=login).one()
-        return usr.password
+        return database.find_login(login=request.args['login'])
+
+
+@app.route('/find_email/', methods=['GET'])
+def find_email():
+    if request.method == 'GET':
+        return database.find_email(email=request.args['email'])
 
 
 @app.route('/get_email/', methods=['GET'])
+@token_required
 def get_email():
     if request.method == 'GET':
-        login = request.args['login']
-        usr = user_db.session.query(Users).filter_by(login=login).one()
-        return usr.mail
+        return database.get_email(login=request.args['login'])
+
+
+@app.route('/get_password/', methods=['GET'])
+@token_required
+def get_password():
+    if request.method == 'GET':
+        return database.get_password(login=request.args['login'])
 
 
 @app.route('/add_user/', methods=['GET'])
@@ -83,7 +74,7 @@ def add_user():
             email=request.args['email'],
             password=request.args['password']
         )
-    return str(True)
+        return str(True)
 
 
 @app.route('/delete_user/', methods=['GET'])
@@ -91,27 +82,23 @@ def add_user():
 def delete_user():
     if request.method == 'GET':
         database.delete_user(login=request.args['login'])
-    return str(True)
+        return str(True)
 
 
 @app.route('/change_mail/', methods=['GET'])
 @token_required
 def change_mail():
     if request.method == 'GET':
-        login = request.args['login']
-        email = request.args['email']
-        database.change(login=login, field='mail', new_value=email)
-    return str(True)
+        database.change(login=request.args['login'], field='mail', new_value=request.args['email'])
+        return str(True)
 
 
 @app.route('/change_password/', methods=['GET'])
 @token_required
 def change_password():
     if request.method == 'GET':
-        login = request.args['login']
-        password = request.args['password']
-        database.change(login=login, field='password', new_value=password)
-    return str(True)
+        database.change(login=request.args['login'], field='password', new_value=request.args['password'])
+        return str(True)
 
 
 @app.route('/add_version/', methods=['GET'])
@@ -134,13 +121,14 @@ def add_version():
                 login=login,
                 mac=mac,
                 folder_path=path_file,
-                filename=file,
+                file_path=file,
                 edited_at=float(files['files'][file]),
                 version=ver
             )
-    return str(True)
+        return str(True)
 
 
+# add folder
 @app.route('/update_version/', methods=['GET'])
 @token_required
 def update_version():
@@ -168,13 +156,14 @@ def update_version():
                 login=login,
                 mac=mac,
                 folder_path=path_file,
-                filename=file,
+                file_path=file,
                 edited_at=float(files['files'][file]),
                 version=n_ver
             )
-    return str(True)
+        return str(True)
 
 
+# delete folder
 @app.route('/delete_version/', methods=['GET'])
 @token_required
 def delete_version():
@@ -185,4 +174,16 @@ def delete_version():
             folder_path=request.args['folder_path'],
             version=request.args['version']
         )
-    return str(True)
+        return str(True)
+
+
+@app.route('/find_version/', methods=['GET'])
+@token_required
+def find_version():
+    if request.method == 'GET':
+        return str(int(database.find_version(
+            login=request.args['login'],
+            mac=request.args['mac'],
+            folder_path=request.args['folder_path'],
+            version=request.args['version']
+        )))

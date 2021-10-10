@@ -1,6 +1,6 @@
 from sqlalchemy import and_, func
 
-from db_init import Users, user_db, Folders, Files
+from db_control.init import user_db, Users, Folders, Files
 
 
 def auth(login, password):

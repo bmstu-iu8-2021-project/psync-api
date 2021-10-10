@@ -1,0 +1,10 @@
+version: "3"
+
+volumes:
+  ORM_database:
+
+services:
+  database:
+    container_name: server_part
+    ports:
+      - 8080:8080

@@ -89,7 +89,7 @@ def delete_user():
 @token_required
 def change_mail():
     if request.method == 'GET':
-        database_actions.change(login=request.args['login'], field='mail', new_value=request.args['email'])
+        database_actions.change(login=request.args['login'], field='email', new_value=request.args['email'])
         return str(True)
 
 

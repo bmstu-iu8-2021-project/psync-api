@@ -75,11 +75,11 @@ def delete_user(login):
     with conn.cursor() as cursor:
         cursor.execute(f"DELETE FROM coursework.public.persons WHERE login = '{login}';")
         cursor.execute(f"SELECT user_id FROM coursework.public.folders WHERE login = '{login}';")
-        user_id = set([i[0] for i in cursor.fetchall()])
-        # cursor.execute('SELECT * FROM coursework.public.folders WHERE user_id IN %s', (tuple(user_id),))
-        # print(cursor.fetchall())
-        cursor.execute(f"DELETE FROM coursework.public.files WHERE user_id IN %s;", (tuple(user_id),))
-        cursor.execute(f"DELETE FROM coursework.public.folders WHERE login = '{login}';")
+        # user_id = set([i[0] for i in cursor.fetchall()])
+        # # cursor.execute('SELECT * FROM coursework.public.folders WHERE user_id IN %s', (tuple(user_id),))
+        # # print(cursor.fetchall())
+        # cursor.execute(f"DELETE FROM coursework.public.files WHERE user_id IN %s;", (tuple(user_id),))
+        # cursor.execute(f"DELETE FROM coursework.public.folders WHERE login = '{login}';")
     close(conn)
 
 

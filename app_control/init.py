@@ -9,4 +9,4 @@ app = Flask(__name__)
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(DATABASE_FOLDER, 'users.db')
 # app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = '80gp3beqsazmdl3wy1j617vho'
-# create()
+create()

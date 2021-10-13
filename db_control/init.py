@@ -51,29 +51,33 @@ def create():
 
     with connection.cursor() as cursor:
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS persons (
-                login varchar(50) NOT NULL PRIMARY KEY,
-                email varchar(50) NOT NULL UNIQUE,
+            CREATE TABLE IF NOT EXISTS persons
+            (
+                login    varchar(50) NOT NULL PRIMARY KEY,
+                email    varchar(50) NOT NULL UNIQUE,
                 password varchar(40) NOT NULL
             );
-            CREATE TABLE IF NOT EXISTS folders (
-                login varchar(50) NOT NULL REFERENCES persons (login),
-                mac varchar(30) NOT NULL,
-                user_id int NOT NULL,
-                folder varchar(300) NOT NULL,
-                version varchar(20) NOT NULL,
-                folder_id int NOT NULL,
-                UNIQUE (user_id, folder_id)
+            CREATE TABLE IF NOT EXISTS folders
+            (
+                login     varchar(50)  NOT NULL,
+                mac       varchar(30)  NOT NULL,
+                user_id   int          NOT NULL,
+                folder    varchar(300) NOT NULL,
+                version   varchar(20)  NOT NULL,
+                folder_id int          NOT NULL,
+                PRIMARY KEY (user_id, folder_id),
+                FOREIGN KEY (login) REFERENCES persons (login) ON DELETE CASCADE
             );
-            CREATE TABLE IF NOT EXISTS files (
-                user_id int NOT NULL REFERENCES folders (user_id),
-                folder_id int NOT NULL REFERENCES folders (folder_id),
-                file varchar(100) NOT NULL,
-                edited_at float4 NOT NULL,
-                UNIQUE (user_id, folder_id)
+            CREATE TABLE IF NOT EXISTS files
+            (
+                user_id   int          NOT NULL,
+                folder_id int          NOT NULL,
+                file      varchar(100) NOT NULL,
+                edited_at float        NOT NULL,
+                FOREIGN KEY (user_id, folder_id) REFERENCES folders (user_id, folder_id) ON DELETE CASCADE
             );
         ''')
-    return connection
+    connection.close()
 
 
 def close(connection):

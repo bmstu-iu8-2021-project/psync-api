@@ -32,12 +32,13 @@
 #     file_version = user_db.Column(user_db.String(50), default='')
 
 import psycopg2
-from config import HOST, USER, PASSWORD, DB_NAME
+from config import HOST, PORT, USER, PASSWORD, DB_NAME
 
 
 def connect():
     connection = psycopg2.connect(
         host=HOST,
+        port=PORT,
         user=USER,
         password=PASSWORD,
         database=DB_NAME

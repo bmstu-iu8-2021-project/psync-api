@@ -1,26 +1,25 @@
 version: "3.8"
 
-volumes:
-  v_psql_db:
-
 services:
   api:
-    build: ./
-#    command: ./wait-for-postgres.sh db ./Flask
-    container_name: server_part
+    build: .
+#    command: ./wait-for-postgres.sh database
+    command: ./wait-for-postgres.sh database python main.py
+#    container_name: server_part
     ports:
       - 8080:8080
     depends_on:
       - database
+    environment:
+      - DB_PASSWORD=PetRigi1504
 
   database:
     restart: always
-    container_name: psql_db
+#    container_name: psql_db
     image: postgres:latest
-    volumes:
-      - v_psql_db:/usr/scr/database
+#    volumes:
+#      - v_psql_db:/usr/scr/database
     environment:
+      - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=PetRigi1504
-      - POSTGRES_HOST_AUTH_METHOD=trust
-    ports:
-      - 5436:5433
+      - POSTGRES_DB=coursework

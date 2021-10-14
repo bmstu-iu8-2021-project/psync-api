@@ -1,5 +1,5 @@
 HOST = 'database'
-PORT = '5433'
-USER = 'peter'
+PORT = '5432'
+USER = 'postgres'
 PASSWORD = 'PetRigi1504'
 DB_NAME = 'coursework'

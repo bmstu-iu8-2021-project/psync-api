@@ -1,21 +1,22 @@
 version: "3.8"
 
 services:
-  api:
+  app:
     build: .
-#    command: ./wait-for-postgres.sh database
     command: ./wait-for-postgres.sh database python main.py
-#    container_name: server_part
+    container_name: app_container
     ports:
       - 8080:8080
     depends_on:
       - database
-    environment:
-      - DB_PASSWORD=PetRigi1504
+    env_file:
+      - ./.env
+#    environment:
+#      - DB_PASSWORD=PetRigi1504
+    restart: always
 
   database:
-    restart: always
-#    container_name: psql_db
+    container_name: database_container
     image: postgres:latest
 #    volumes:
 #      - v_psql_db:/usr/scr/database
@@ -23,3 +24,4 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=PetRigi1504
       - POSTGRES_DB=coursework
+    restart: always

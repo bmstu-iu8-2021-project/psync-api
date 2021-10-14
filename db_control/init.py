@@ -32,16 +32,21 @@
 #     file_version = user_db.Column(user_db.String(50), default='')
 
 import psycopg2
-from config import HOST, PORT, USER, PASSWORD, DB_NAME
+import os
+from dotenv import load_dotenv
+
+dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+if os.path.exists(dotenv_path):
+    load_dotenv(dotenv_path)
 
 
 def connect():
     connection = psycopg2.connect(
-        host=HOST,
-        port=PORT,
-        user=USER,
-        password=PASSWORD,
-        database=DB_NAME
+        host=os.environ['DB_HOST'],
+        port=os.environ['DB_PORT'],
+        user=os.environ['DB_USER'],
+        password=os.environ['DB_PASSWORD'],
+        database=os.environ['DB_NAME']
     )
     connection.autocommit = True
     return connection

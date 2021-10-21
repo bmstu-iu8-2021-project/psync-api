@@ -71,6 +71,7 @@ def add_user():
     if request.method == 'GET':
         database_actions.add_user(
             login=request.args['login'],
+            mac=request.args['mac'],
             email=request.args['email'],
             password=request.args['password']
         )
@@ -116,15 +117,15 @@ def add_version():
             folder_path=path_file,
             version=ver
         )
-        for file in files['files']:
-            database_actions.add_files(
-                login=login,
-                mac=mac,
-                folder_path=path_file,
-                file_path=file,
-                edited_at=float(files['files'][file]),
-                version=ver
-            )
+        # for file in files['files']:
+        #     database_actions.add_files(
+        #         login=login,
+        #         mac=mac,
+        #         folder_path=path_file,
+        #         file_path=file,
+        #         edited_at=float(files['files'][file]),
+        #         version=ver
+        #     )
         return str(True)
 
 
@@ -151,15 +152,15 @@ def update_version():
             folder_path=path_file,
             version=n_ver
         )
-        for file in files['files']:
-            database_actions.add_files(
-                login=login,
-                mac=mac,
-                folder_path=path_file,
-                file_path=file,
-                edited_at=float(files['files'][file]),
-                version=n_ver
-            )
+        # for file in files['files']:
+        #     database_actions.add_files(
+        #         login=login,
+        #         mac=mac,
+        #         folder_path=path_file,
+        #         file_path=file,
+        #         edited_at=float(files['files'][file]),
+        #         version=n_ver
+        #     )
         return str(True)
 
 
@@ -181,9 +182,31 @@ def delete_version():
 @token_required
 def find_version():
     if request.method == 'GET':
-        return str(int(database_actions.find_version(
+        return (database_actions.find_version(
             login=request.args['login'],
             mac=request.args['mac'],
             folder_path=request.args['folder_path'],
             version=request.args['version']
-        )))
+        ))
+
+
+@app.route('/get_folders/', methods=['GET'])
+@token_required
+def get_folders():
+    if request.method == 'GET':
+        return database_actions.get_folders(
+            login=request.args['login'],
+            mac=request.args['mac']
+        )
+
+
+@app.route('/get_files/', methods=['GET'])
+@token_required
+def get_files():
+    if request.method == 'GET':
+        return database_actions.get_files(
+            login=request.args['login'],
+            mac=request.args['mac'],
+            folder=request.args['folder'],
+            version=request.args['version'],
+        )

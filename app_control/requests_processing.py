@@ -1,9 +1,11 @@
 import datetime
 import json
+import os
 from functools import wraps
 
 import jwt
-from flask import request
+from flask import request, send_from_directory
+from werkzeug.utils import secure_filename
 
 from db_control import database_actions
 from app_control.init import app
@@ -22,7 +24,6 @@ def token_required(req):
         except:
             return app.make_response(('Token is wrong', 403))
         return req(*args, **kwargs)
-
     return decorated
 
 
@@ -117,6 +118,10 @@ def add_version():
             folder_path=path_file,
             version=ver
         )
+        # file_get = request.files['file']
+        # if file_get:
+        #     filename = secure_filename(file_get.filename)
+        #     file_get.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         # for file in files['files']:
         #     database_actions.add_files(
         #         login=login,
@@ -126,6 +131,17 @@ def add_version():
         #         edited_at=float(files['files'][file]),
         #         version=ver
         #     )
+        return str(True)
+
+
+@app.route('/send_folder/', methods=['GET'])
+@token_required
+def send_folder():
+    if request.method == 'GET':
+        file_get = request.files['file']
+        if file_get:
+            filename = secure_filename(file_get.filename)
+            file_get.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         return str(True)
 
 
@@ -210,3 +226,25 @@ def get_files():
             folder=request.args['folder'],
             version=request.args['version'],
         )
+
+
+@app.route('/file/', methods=['GET'])
+def file():
+    response = send_from_directory(directory='your-directory', filename='your-file-name')
+    response.headers['my-custom-header'] = 'my-custom-status-0'
+    return response
+
+# def allowed_file(filename):
+#     return '.' in filename and \
+#            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+#
+#
+# @app.route('/upload/', methods=['GET'])
+# def upload_file():
+#     if request.method == 'GET':
+#         file_get = request.files['file']
+#         if file_get:
+#             filename = secure_filename(file_get.filename)
+#             file_get.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+#             return 'done'
+#     return 'Error'

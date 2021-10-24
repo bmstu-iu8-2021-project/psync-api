@@ -24,6 +24,7 @@ def token_required(req):
         except:
             return app.make_response(('Token is wrong', 403))
         return req(*args, **kwargs)
+
     return decorated
 
 
@@ -108,39 +109,25 @@ def change_password():
 def add_version():
     if request.method == 'GET':
         files = json.loads(request.data.decode('UTF-8'))
-        login = files['login']
-        mac = files['mac']
-        path_file = files['path_file']
-        ver = files['new_version']
         database_actions.add_folder(
-            login=login,
-            mac=mac,
-            folder_path=path_file,
-            version=ver
+            login=files['login'],
+            mac=files['mac'],
+            folder_path=files['path_file'],
+            version=files['new_version'],
+            path=os.path.join(app.config['UPLOAD_FOLDER'], '_'.join(
+                [files['login'], files['path_file'][files['path_file'].rfind('/') + 1:],
+                 files['new_version']]) + '.zip')
         )
-        # file_get = request.files['file']
-        # if file_get:
-        #     filename = secure_filename(file_get.filename)
-        #     file_get.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        # for file in files['files']:
-        #     database_actions.add_files(
-        #         login=login,
-        #         mac=mac,
-        #         folder_path=path_file,
-        #         file_path=file,
-        #         edited_at=float(files['files'][file]),
-        #         version=ver
-        #     )
         return str(True)
 
 
-@app.route('/send_folder/', methods=['GET'])
+@app.route('/upload_folder/', methods=['GET'])
 @token_required
-def send_folder():
+def upload_folder():
     if request.method == 'GET':
         file_get = request.files['file']
         if file_get:
-            filename = secure_filename(file_get.filename)
+            filename = file_get.filename
             file_get.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         return str(True)
 
@@ -151,22 +138,18 @@ def send_folder():
 def update_version():
     if request.method == 'GET':
         files = json.loads(request.data.decode('UTF-8'))
-        login = files['login']
-        mac = files['mac']
-        path_file = files['path_file']
-        o_ver = files['old_version']
-        n_ver = files['new_version']
         database_actions.delete_folder(
-            login=login,
-            mac=mac,
-            folder_path=path_file,
-            version=o_ver
+            login=files['login'],
+            mac=files['mac'],
+            folder_path=files['path_file'],
+            version=files['old_version']
         )
         database_actions.add_folder(
-            login=login,
-            mac=mac,
-            folder_path=path_file,
-            version=n_ver
+            login=files['login'],
+            mac=files['mac'],
+            folder_path=files['path_file'],
+            version=files['new_version'],
+            path=os.path.join(app.config['UPLOAD_FOLDER'], '')
         )
         # for file in files['files']:
         #     database_actions.add_files(
@@ -185,12 +168,13 @@ def update_version():
 @token_required
 def delete_version():
     if request.method == 'GET':
-        database_actions.delete_folder(
+        path = database_actions.delete_version(
             login=request.args['login'],
             mac=request.args['mac'],
             folder_path=request.args['folder_path'],
             version=request.args['version']
         )
+        os.remove(path)
         return str(True)
 
 

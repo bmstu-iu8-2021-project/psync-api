@@ -71,7 +71,6 @@ def delete_user(login):
     conn = connect()
     with conn.cursor() as cursor:
         cursor.execute(f"DELETE FROM coursework.public.persons WHERE login = '{login}';")
-        # cursor.execute(f"SELECT user_id FROM coursework.public.folders WHERE login = '{login}';")
     close(conn)
 
 
@@ -162,18 +161,17 @@ def get_agent_id(login, mac):
 
 
 # add version
-def add_folder(login, mac, folder_path, version):
+def add_folder(login, mac, folder_path, version, path):
+    agent_id = get_agent_id(login, mac)
     conn = connect()
     with conn.cursor() as cursor:
-        cursor.execute(f"SELECT id FROM coursework.public.persons WHERE login = '{login}'")
-        person_id = int(cursor.fetchone()[0])
-        cursor.execute(f"SELECT id FROM coursework.public.hosts WHERE mac = '{mac}'")
-        host_id = int(cursor.fetchone()[0])
-        cursor.execute(f"SELECT id FROM coursework.public.agent WHERE person_id = {person_id} AND host_id = {host_id}")
-        agent_id = int(cursor.fetchone()[0])
         cursor.execute(f'''
-            INSERT INTO coursework.public.resources (agent_id, path) VALUES({agent_id}, '{folder_path}');
+            SELECT id FROM coursework.public.resources WHERE agent_id = {agent_id} AND path = '{folder_path}'
         ''')
+        if cursor.fetchone() is None:
+            cursor.execute(f'''
+                INSERT INTO coursework.public.resources (agent_id, path) VALUES({agent_id}, '{folder_path}');
+            ''')
         cursor.execute(
             f"SELECT id FROM coursework.public.resources WHERE agent_id = {agent_id} AND path = '{folder_path}'"
         )
@@ -181,54 +179,59 @@ def add_folder(login, mac, folder_path, version):
 
         cursor.execute(f'''
             INSERT INTO coursework.public.versions (resources_id, version, created_at, path) 
-            VALUES({res_id}, '{version}', '{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}', '{"./files/" + str(res_id)}');
+            VALUES({res_id}, '{version}', '{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}', '{path}');
         ''')
 
     close(conn)
 
 
-def add_files(login, mac, folder_path, file_path, edited_at, version):
-    conn = connect()
-    with conn.cursor() as cursor:
-        cursor.execute(f'''
-            SELECT user_id FROM coursework.public.folders WHERE login = '{login}' AND mac = '{mac}';
-        ''')
-        user_id = cursor.fetchone()
-        user_id = user_id[0]
-        cursor.execute(f'''
-            SELECT folder_id FROM coursework.public.folders WHERE folder = '{folder_path}' AND version = '{version}';
-        ''')
-        folder_id = cursor.fetchone()
-        folder_id = folder_id[0]
-
-        cursor.execute(f'''
-            INSERT INTO coursework.public.files VALUES( 
-                {user_id}, 
-                {folder_id},
-                '{file_path}',
-                {edited_at}
-        );''')
-    close(conn)
+# def add_files(login, mac, folder_path, file_path, edited_at, version):
+#     conn = connect()
+#     with conn.cursor() as cursor:
+#         cursor.execute(f'''
+#             SELECT user_id FROM coursework.public.folders WHERE login = '{login}' AND mac = '{mac}';
+#         ''')
+#         user_id = cursor.fetchone()
+#         user_id = user_id[0]
+#         cursor.execute(f'''
+#             SELECT folder_id FROM coursework.public.folders WHERE folder = '{folder_path}' AND version = '{version}';
+#         ''')
+#         folder_id = cursor.fetchone()
+#         folder_id = folder_id[0]
+#
+#         cursor.execute(f'''
+#             INSERT INTO coursework.public.files VALUES(
+#                 {user_id},
+#                 {folder_id},
+#                 '{file_path}',
+#                 {edited_at}
+#         );''')
+#     close(conn)
 
 
 # delete version
-def delete_folder(login, mac, folder_path, version):
+
+def delete_version(login, mac, folder_path, version):
+    agent_id = get_agent_id(login, mac)
     conn = connect()
     with conn.cursor() as cursor:
         cursor.execute(f'''
-                SELECT user_id, folder_id FROM coursework.public.folders WHERE 
-                    login = '{login}' AND 
-                    mac = '{mac}' AND 
-                    folder = '{folder_path}' AND
-                    version = '{version}';
-            ''')
-        folder_id = cursor.fetchall()
-        user_id, folder_id = folder_id[0]
-
-        cursor.execute(f'''
-            DELETE FROM coursework.public.folders WHERE user_id = '{user_id}' AND folder_id = '{folder_id}';
+            SELECT id FROM coursework.public.resources WHERE agent_id = {agent_id} AND path = '{folder_path}';
         ''')
+        resources_id = cursor.fetchone()[0]
+        cursor.execute(f'''
+            SELECT path FROM coursework.public.versions WHERE resources_id = {resources_id} AND version = '{version}';
+        ''')
+        path = cursor.fetchone()[0]
+        cursor.execute(f'''
+            DELETE FROM coursework.public.versions WHERE resources_id = {resources_id} AND version = '{version}';
+        ''')
+        cursor.execute(f"SELECT id FROM coursework.public.versions WHERE resources_id = {resources_id};")
+        if cursor.fetchone() is None:
+            cursor.execute(f"DELETE FROM coursework.public.resources WHERE agent_id = {agent_id} AND "
+                           f"path = '{folder_path}';")
     close(conn)
+    return path
 
 
 def find_version(login, mac, folder_path, version):
@@ -250,27 +253,44 @@ def find_version(login, mac, folder_path, version):
     return str(get is None)
 
 
-def get_json(data_, *args):
-    output = dict()
-    for arg in args:
-        output[arg] = list()
-    for row in data_:
+# def get_json(output, data_, *args):
+#     if output is None:
+#         output = dict()
+#     for arg in args:
+#         output[arg] = list()
+#     for row in data_:
+#         for arg in args:
+#             output[arg].append(row[args.index(arg)])
+#     return output
+
+
+def get_json(output, path, version_info, *args):
+    if output is None or len(output.keys()) == 0:
+        output = dict()
         for arg in args:
-            output[arg].append(row[args.index(arg)])
-    return json.dumps(output)
+            output[arg] = list()
+    for row in version_info:
+        output[args[0]].append(path)
+        for arg in args[1:]:
+            output[arg].append(str(row[args[1:].index(arg)]))
+    return output
 
 
 def get_folders(login, mac):
+    agent_id = get_agent_id(login, mac)
+    folders = {}
     conn = connect()
     with conn.cursor() as cursor:
-        cursor.execute(f'''
-            SELECT folder, version, folder_id FROM coursework.public.folders WHERE
-                login = '{login}' AND
-                mac = '{mac}';
-        ''')
-        folders = cursor.fetchall()
+        cursor.execute(f"SELECT id, path FROM coursework.public.resources WHERE agent_id = {agent_id}")
+        resources_info = cursor.fetchall()
+        for pair in resources_info:
+            cursor.execute(f'''
+                SELECT version, created_at FROM coursework.public.versions WHERE resources_id = {pair[0]}
+            ''')
+            version_info = cursor.fetchall()
+            folders = get_json(folders, pair[1], version_info, 'folder', 'version', 'created_at')
     close(conn)
-    return get_json(folders, 'folder', 'version', 'folder_id')
+    return json.dumps(folders)
 
 # def get_files(login, mac, folder, version):
 #     conn = connect()

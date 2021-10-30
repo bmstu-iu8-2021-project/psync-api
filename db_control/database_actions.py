@@ -1,19 +1,42 @@
 import json
+import os
+
 import bcrypt
 import datetime
 from db_control.init import connect, close
 
 
-def auth(login, password):
+def auth(login, password, mac):
     conn = connect()
     with conn.cursor() as cursor:
-        cursor.execute(f"SELECT password FROM coursework.public.persons WHERE login = '{login}';")
-        pw = cursor.fetchone()
+        cursor.execute(f"SELECT password, id FROM coursework.public.persons WHERE login = '{login}';")
+        pack = cursor.fetchone()
+        if pack is None:
+            close(conn)
+            return False
+        pw, person_id = pack
+        if pw:
+            if bcrypt.checkpw(password.encode('UTF-8'), pw.encode('UTF-8')):
+                cursor.execute(f"SELECT id FROM coursework.public.hosts WHERE mac = '{mac}'")
+                host_id = cursor.fetchone()
+                if host_id is None:
+                    host_id = add_host(mac)
+                    cursor.execute(f"INSERT INTO coursework.public.agent (person_id, host_id) "
+                                   f"VALUES({person_id}, {host_id});")
+                close(conn)
+                return True
     close(conn)
-    if pw:
-        pw = pw[0]
-        return bcrypt.checkpw(password.encode('UTF-8'), pw.encode('UTF-8'))
     return False
+
+
+def add_host(mac):
+    conn = connect()
+    with conn.cursor() as cursor:
+        cursor.execute(f"INSERT INTO coursework.public.hosts (mac) VALUES('{mac}')")
+        cursor.execute(f"SELECT id FROM coursework.public.hosts WHERE mac = '{mac}'")
+        host_id = cursor.fetchone()
+    close(conn)
+    return host_id
 
 
 def find_login(login):
@@ -68,8 +91,17 @@ def add_user(login, mac, email, password):
 
 
 def delete_user(login):
+    person_id = get_person_id(login)
     conn = connect()
     with conn.cursor() as cursor:
+        cursor.execute(f"SELECT id FROM coursework.public.agent WHERE person_id = {person_id};")
+        agent_ids = [i[0] for i in cursor.fetchall()]
+        for agent_id in agent_ids:
+            cursor.execute(f"SELECT id FROM coursework.public.resources WHERE agent_id = {agent_id};")
+            res_ids = [i[0] for i in cursor.fetchall()]
+            for res_id in res_ids:
+                cursor.execute(f"SELECT path FROM coursework.public.versions WHERE resources_id = {res_id}")
+                [os.remove(i[0]) for i in cursor.fetchall()]
         cursor.execute(f"DELETE FROM coursework.public.persons WHERE login = '{login}';")
     close(conn)
 
@@ -135,7 +167,7 @@ def get_person_id(login):
     conn = connect()
     with conn.cursor() as cursor:
         cursor.execute(f"SELECT id FROM coursework.public.persons WHERE login = '{login}'")
-        person_id = int(cursor.fetchone()[0])
+        person_id = cursor.fetchone()[0]
     close(conn)
     return person_id
 
@@ -144,7 +176,7 @@ def get_host_id(mac):
     conn = connect()
     with conn.cursor() as cursor:
         cursor.execute(f"SELECT id FROM coursework.public.hosts WHERE mac = '{mac}'")
-        host_id = int(cursor.fetchone()[0])
+        host_id = cursor.fetchone()[0]
     close(conn)
     return host_id
 
@@ -155,13 +187,13 @@ def get_agent_id(login, mac):
     conn = connect()
     with conn.cursor() as cursor:
         cursor.execute(f"SELECT id FROM coursework.public.agent WHERE person_id = {person_id} AND host_id = {host_id}")
-        agent_id = int(cursor.fetchone()[0])
+        agent_id = cursor.fetchone()[0]
     close(conn)
     return agent_id
 
 
 # add version
-def add_folder(login, mac, folder_path, version, path):
+def add_folder(login, mac, folder_path, version, is_actual, path):
     agent_id = get_agent_id(login, mac)
     conn = connect()
     with conn.cursor() as cursor:
@@ -178,39 +210,14 @@ def add_folder(login, mac, folder_path, version, path):
         res_id = int(cursor.fetchone()[0])
 
         cursor.execute(f'''
-            INSERT INTO coursework.public.versions (resources_id, version, created_at, path) 
-            VALUES({res_id}, '{version}', '{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}', '{path}');
+            INSERT INTO coursework.public.versions (resources_id, version, created_at, is_actual, path) 
+            VALUES({res_id}, '{version}', '{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}', 
+            {is_actual}, '{path}');
         ''')
-
     close(conn)
 
 
-# def add_files(login, mac, folder_path, file_path, edited_at, version):
-#     conn = connect()
-#     with conn.cursor() as cursor:
-#         cursor.execute(f'''
-#             SELECT user_id FROM coursework.public.folders WHERE login = '{login}' AND mac = '{mac}';
-#         ''')
-#         user_id = cursor.fetchone()
-#         user_id = user_id[0]
-#         cursor.execute(f'''
-#             SELECT folder_id FROM coursework.public.folders WHERE folder = '{folder_path}' AND version = '{version}';
-#         ''')
-#         folder_id = cursor.fetchone()
-#         folder_id = folder_id[0]
-#
-#         cursor.execute(f'''
-#             INSERT INTO coursework.public.files VALUES(
-#                 {user_id},
-#                 {folder_id},
-#                 '{file_path}',
-#                 {edited_at}
-#         );''')
-#     close(conn)
-
-
 # delete version
-
 def delete_version(login, mac, folder_path, version):
     agent_id = get_agent_id(login, mac)
     conn = connect()
@@ -285,12 +292,72 @@ def get_folders(login, mac):
         resources_info = cursor.fetchall()
         for pair in resources_info:
             cursor.execute(f'''
-                SELECT version, created_at FROM coursework.public.versions WHERE resources_id = {pair[0]}
+                SELECT version, created_at, is_actual FROM coursework.public.versions WHERE resources_id = {pair[0]}
             ''')
             version_info = cursor.fetchall()
-            folders = get_json(folders, pair[1], version_info, 'folder', 'version', 'created_at')
+            folders = get_json(folders, pair[1], version_info, 'folder', 'version', 'created_at', 'is_actual')
     close(conn)
     return json.dumps(folders)
+
+
+def make_actual(login, mac, path, version):
+    agent_id = get_agent_id(login, mac)
+    conn = connect()
+    with conn.cursor() as cursor:
+        cursor.execute(
+            f"SELECT id FROM coursework.public.resources WHERE agent_id = {agent_id} AND path = '{path}'"
+        )
+        resources_id = cursor.fetchone()[0]
+        cursor.execute(f"UPDATE coursework.public.versions SET is_actual = False WHERE resources_id = {resources_id}")
+        cursor.execute(f"UPDATE coursework.public.versions SET is_actual = True "
+                       f"WHERE resources_id = {resources_id} AND version = '{version}'")
+    close(conn)
+
+
+def make_no_actual(login, mac, path):
+    agent_id = get_agent_id(login, mac)
+    conn = connect()
+    with conn.cursor() as cursor:
+        cursor.execute(
+            f"SELECT id FROM coursework.public.resources WHERE agent_id = {agent_id} AND path = '{path}'"
+        )
+        resources_id = cursor.fetchone()[0]
+        cursor.execute(f"UPDATE coursework.public.versions SET is_actual = False WHERE resources_id = {resources_id}")
+    close(conn)
+
+
+def get_resources_id(agent_id, path):
+    conn = connect()
+    with conn.cursor() as cursor:
+        cursor.execute(f"SELECT id FROM coursework.public.resources WHERE agent_id = {agent_id} AND path = '{path}'")
+        resources_id = cursor.fetchone()[0]
+    close(conn)
+    return resources_id
+
+
+def get_actual_version(login, mac, path):
+    agent_id = get_agent_id(login, mac)
+    resources_id = get_resources_id(agent_id, path)
+    conn = connect()
+    with conn.cursor() as cursor:
+        cursor.execute(f"SELECT version FROM coursework.public.versions "
+                       f"WHERE resources_id = {resources_id} AND is_actual = True")
+        version = cursor.fetchone()[0]
+    close(conn)
+    return version
+
+
+def download_folder(login, mac, path, version):
+    agent_id = get_agent_id(login, mac)
+    resources_id = get_resources_id(agent_id, path)
+    conn = connect()
+    with conn.cursor() as cursor:
+        cursor.execute(f"SELECT path FROM coursework.public.versions "
+                       f"WHERE resources_id = {resources_id} AND version = '{version}'")
+        server_path = cursor.fetchone()[0]
+    close(conn)
+    return open(server_path, 'rb')
+
 
 # def get_files(login, mac, folder, version):
 #     conn = connect()

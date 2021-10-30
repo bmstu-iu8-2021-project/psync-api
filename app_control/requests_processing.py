@@ -4,11 +4,11 @@ import os
 from functools import wraps
 
 import jwt
-from flask import request, send_from_directory
-from werkzeug.utils import secure_filename
+from flask import request
 
 from db_control import database_actions
 from app_control.init import app
+import files_actions
 
 
 def token_required(req):
@@ -33,25 +33,29 @@ def auth():
     if request.method == 'GET':
         login = request.args['login']
         password = request.args['password']
+        mac = request.args['mac']
         token = ''
-        if database_actions.auth(login=login, password=password):
+        if database_actions.auth(login=login, password=password, mac=mac):
             token = jwt.encode({'user': login,
                                 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
                                 }, app.config['SECRET_KEY'])
             token = token.decode('UTF-8')
         return json.dumps({'token': token})
+    return app.make_response(('Bad request', 400))
 
 
 @app.route('/find_login/', methods=['GET'])
 def find_login():
     if request.method == 'GET':
         return database_actions.find_login(login=request.args['login'])
+    return app.make_response(('Bad request', 400))
 
 
 @app.route('/find_email/', methods=['GET'])
 def find_email():
     if request.method == 'GET':
         return database_actions.find_email(email=request.args['email'])
+    return app.make_response(('Bad request', 400))
 
 
 @app.route('/get_email/', methods=['GET'])
@@ -59,6 +63,7 @@ def find_email():
 def get_email():
     if request.method == 'GET':
         return database_actions.get_email(login=request.args['login'])
+    return app.make_response(('Bad request', 400))
 
 
 @app.route('/get_password/', methods=['GET'])
@@ -66,6 +71,7 @@ def get_email():
 def get_password():
     if request.method == 'GET':
         return database_actions.get_password(login=request.args['login'])
+    return app.make_response(('Bad request', 400))
 
 
 @app.route('/add_user/', methods=['GET'])
@@ -78,6 +84,7 @@ def add_user():
             password=request.args['password']
         )
         return str(True)
+    return app.make_response(('Bad request', 400))
 
 
 @app.route('/delete_user/', methods=['GET'])
@@ -86,6 +93,7 @@ def delete_user():
     if request.method == 'GET':
         database_actions.delete_user(login=request.args['login'])
         return str(True)
+    return app.make_response(('Bad request', 400))
 
 
 @app.route('/change_mail/', methods=['GET'])
@@ -94,6 +102,7 @@ def change_mail():
     if request.method == 'GET':
         database_actions.change(login=request.args['login'], field='email', new_value=request.args['email'])
         return str(True)
+    return app.make_response(('Bad request', 400))
 
 
 @app.route('/change_password/', methods=['GET'])
@@ -102,8 +111,10 @@ def change_password():
     if request.method == 'GET':
         database_actions.change(login=request.args['login'], field='password', new_value=request.args['password'])
         return str(True)
+    return app.make_response(('Bad request', 400))
 
 
+# add folder
 @app.route('/add_version/', methods=['GET'])
 @token_required
 def add_version():
@@ -114,11 +125,13 @@ def add_version():
             mac=files['mac'],
             folder_path=files['path_file'],
             version=files['new_version'],
+            is_actual=files['is_actual'],
             path=os.path.join(app.config['UPLOAD_FOLDER'], '_'.join(
                 [files['login'], files['path_file'][files['path_file'].rfind('/') + 1:],
                  files['new_version']]) + '.zip')
         )
         return str(True)
+    return app.make_response(('Bad request', 400))
 
 
 @app.route('/upload_folder/', methods=['GET'])
@@ -130,37 +143,39 @@ def upload_folder():
             filename = file_get.filename
             file_get.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         return str(True)
+    return app.make_response(('Bad request', 400))
 
 
-# add folder
-@app.route('/update_version/', methods=['GET'])
-@token_required
-def update_version():
-    if request.method == 'GET':
-        files = json.loads(request.data.decode('UTF-8'))
-        database_actions.delete_folder(
-            login=files['login'],
-            mac=files['mac'],
-            folder_path=files['path_file'],
-            version=files['old_version']
-        )
-        database_actions.add_folder(
-            login=files['login'],
-            mac=files['mac'],
-            folder_path=files['path_file'],
-            version=files['new_version'],
-            path=os.path.join(app.config['UPLOAD_FOLDER'], '')
-        )
-        # for file in files['files']:
-        #     database_actions.add_files(
-        #         login=login,
-        #         mac=mac,
-        #         folder_path=path_file,
-        #         file_path=file,
-        #         edited_at=float(files['files'][file]),
-        #         version=n_ver
-        #     )
-        return str(True)
+# # add folder
+# @app.route('/update_version/', methods=['GET'])
+# @token_required
+# def update_version():
+#     if request.method == 'GET':
+#         files = json.loads(request.data.decode('UTF-8'))
+#         database_actions.delete_folder(
+#             login=files['login'],
+#             mac=files['mac'],
+#             folder_path=files['path_file'],
+#             version=files['old_version']
+#         )
+#         database_actions.add_folder(
+#             login=files['login'],
+#             mac=files['mac'],
+#             folder_path=files['path_file'],
+#             version=files['new_version'],
+#             path=os.path.join(app.config['UPLOAD_FOLDER'], '')
+#         )
+#         # for file in files['files']:
+#         #     database_actions.add_files(
+#         #         login=login,
+#         #         mac=mac,
+#         #         folder_path=path_file,
+#         #         file_path=file,
+#         #         edited_at=float(files['files'][file]),
+#         #         version=n_ver
+#         #     )
+#         return str(True)
+#     return app.make_response(('Bad request', 400))
 
 
 # delete folder
@@ -176,6 +191,7 @@ def delete_version():
         )
         os.remove(path)
         return str(True)
+    return app.make_response(('Bad request', 400))
 
 
 @app.route('/find_version/', methods=['GET'])
@@ -188,6 +204,7 @@ def find_version():
             folder_path=request.args['folder_path'],
             version=request.args['version']
         ))
+    return app.make_response(('Bad request', 400))
 
 
 @app.route('/get_folders/', methods=['GET'])
@@ -198,37 +215,82 @@ def get_folders():
             login=request.args['login'],
             mac=request.args['mac']
         )
+    return app.make_response(('Bad request', 400))
 
 
-@app.route('/get_files/', methods=['GET'])
+# @app.route('/get_files/', methods=['GET'])
+# @token_required
+# def get_files():
+#     if request.method == 'GET':
+#         return database_actions.get_files(
+#             login=request.args['login'],
+#             mac=request.args['mac'],
+#             folder=request.args['folder'],
+#             version=request.args['version'],
+#         )
+
+
+@app.route('/make_actual/', methods=['GET'])
 @token_required
-def get_files():
+def make_actual():
     if request.method == 'GET':
-        return database_actions.get_files(
+        database_actions.make_actual(
             login=request.args['login'],
             mac=request.args['mac'],
-            folder=request.args['folder'],
+            path=request.args['path'],
             version=request.args['version'],
         )
+        return str(True)
+    return app.make_response(('Bad request', 400))
 
 
-@app.route('/file/', methods=['GET'])
-def file():
-    response = send_from_directory(directory='your-directory', filename='your-file-name')
-    response.headers['my-custom-header'] = 'my-custom-status-0'
-    return response
+@app.route('/check_actuality/', methods=['GET'])
+@token_required
+def check_actuality():
+    if request.method == 'GET':
+        return json.dumps(files_actions.get_difference(json.loads(request.data.decode('UTF-8'))))
+    return app.make_response(('Bad request', 400))
 
-# def allowed_file(filename):
-#     return '.' in filename and \
-#            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-#
-#
-# @app.route('/upload/', methods=['GET'])
-# def upload_file():
-#     if request.method == 'GET':
-#         file_get = request.files['file']
-#         if file_get:
-#             filename = secure_filename(file_get.filename)
-#             file_get.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-#             return 'done'
-#     return 'Error'
+
+@app.route('/make_no_actual/', methods=['GET'])
+@token_required
+def make_no_actual():
+    if request.method == 'GET':
+        database_actions.make_no_actual(
+            login=request.args['login'],
+            mac=request.args['mac'],
+            path=request.args['path'],
+        )
+        return str(True)
+    return app.make_response(('Bad request', 400))
+
+
+@app.route('/get_actual_version/', methods=['GET'])
+@token_required
+def get_actual_version():
+    if request.method == 'GET':
+        return database_actions.get_actual_version(
+            login=request.args['login'],
+            mac=request.args['mac'],
+            path=request.args['path'],
+        )
+    return app.make_response(('Bad request', 400))
+
+
+@app.route('/download_folder/', methods=['GET'])
+@token_required
+def download_folder():
+    if request.method == 'GET':
+        return database_actions.download_folder(
+            login=request.args['login'],
+            mac=request.args['mac'],
+            path=request.args['path'],
+            version=request.args['version'],
+        )
+    return app.make_response(('Bad request', 400))
+
+# @app.route('/file/', methods=['GET'])
+# def file():
+#     response = send_from_directory(directory='your-directory', filename='your-file-name')
+#     response.headers['my-custom-header'] = 'my-custom-status-0'
+#     return response

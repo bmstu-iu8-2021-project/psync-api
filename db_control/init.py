@@ -99,6 +99,7 @@ def create():
                 resources_id int          NOT NULL,
                 version      varchar(20)  NOT NULL,
                 created_at   timestamp    NOT NULL,
+                is_actual    bool         NOT NULL,
                 path         varchar(300) NOT NULL,
                 FOREIGN KEY (resources_id) REFERENCES resources (id) ON DELETE CASCADE
             );

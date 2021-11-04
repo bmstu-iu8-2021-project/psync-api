@@ -250,25 +250,33 @@ def download_folder():
 
 
 @app.route('/synchronize/', methods=['GET'])
+@token_required
 def synchronize():
     if request.method == 'GET':
-        pass
+        login = request.args['login']
+        sync_to = request.args['sync_to']
+        room = request.args['room']
+        if sync_to not in users:
+            return str(False)
+        sio.send({'type': 'request_to_synchronize', 'receiver': sync_to, 'message': f'request from {login}'}, to=room)
+        return str(True)
     return app.make_response(('Bad request', 400))
+
+
+users = []
 
 
 @sio.on('join_room')
 def on_join(data):
-    username = data['username']
+    users.append(data['username'])
     room = data['room']
     join_room(room)
     print('joined')
-    sio.send({'data': username + ' has entered the room'}, to=room)
 
 
 @sio.on('leave_room')
 def on_leave(data):
-    username = data['username']
+    users.remove(data['username'])
     room = data['room']
-    print('left')
-    sio.send({'data': username + ' has left the room'}, to=room)
     leave_room(room)
+    print('left')

@@ -23,34 +23,6 @@ def create():
     connection = connect()
 
     with connection.cursor() as cursor:
-        # cursor.execute('''
-        #     CREATE TABLE IF NOT EXISTS persons
-        #     (
-        #         login    varchar(20) NOT NULL PRIMARY KEY,
-        #         email    varchar(50) NOT NULL UNIQUE,
-        #         password varchar(60) NOT NULL
-        #     );
-        #     CREATE TABLE IF NOT EXISTS folders
-        #     (
-        #         login     varchar(20)  NOT NULL,
-        #         mac       varchar(30)  NOT NULL,
-        #         user_id   int          NOT NULL,
-        #         folder    varchar(300) NOT NULL,
-        #         version   varchar(20)  NOT NULL,
-        #         folder_id int          NOT NULL,
-        #         PRIMARY KEY (user_id, folder_id),
-        #         FOREIGN KEY (login) REFERENCES persons (login) ON DELETE CASCADE
-        #     );
-        #     CREATE TABLE IF NOT EXISTS files
-        #     (
-        #         user_id   int          NOT NULL,
-        #         folder_id int          NOT NULL,
-        #         file      varchar(600) NOT NULL,
-        #         edited_at float        NOT NULL,
-        #         FOREIGN KEY (user_id, folder_id) REFERENCES folders (user_id, folder_id) ON DELETE CASCADE
-        #     );
-        # ''')
-
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS persons
             (

@@ -1,8 +1,9 @@
+import codecs
 import json
 import os
-
 import bcrypt
 import datetime
+
 from db_control.init import connect, close
 
 
@@ -356,8 +357,7 @@ def download_folder(login, mac, path, version):
                        f"WHERE resources_id = {resources_id} AND version = '{version}'")
         server_path = cursor.fetchone()[0]
     close(conn)
-    return open(server_path, 'rb')
-
+    return codecs.open(server_path, 'rb').read()
 
 # def get_files(login, mac, folder, version):
 #     conn = connect()

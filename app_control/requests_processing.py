@@ -3,11 +3,13 @@ import json
 import os
 from functools import wraps
 
-import jwt
+import flask
 from flask import request
+from flask_socketio import join_room, leave_room
+import jwt
 
 from db_control import database_actions
-from app_control.init import app
+from app_control.init import app, sio
 import files_actions
 
 
@@ -146,39 +148,6 @@ def upload_folder():
     return app.make_response(('Bad request', 400))
 
 
-# # add folder
-# @app.route('/update_version/', methods=['GET'])
-# @token_required
-# def update_version():
-#     if request.method == 'GET':
-#         files = json.loads(request.data.decode('UTF-8'))
-#         database_actions.delete_folder(
-#             login=files['login'],
-#             mac=files['mac'],
-#             folder_path=files['path_file'],
-#             version=files['old_version']
-#         )
-#         database_actions.add_folder(
-#             login=files['login'],
-#             mac=files['mac'],
-#             folder_path=files['path_file'],
-#             version=files['new_version'],
-#             path=os.path.join(app.config['UPLOAD_FOLDER'], '')
-#         )
-#         # for file in files['files']:
-#         #     database_actions.add_files(
-#         #         login=login,
-#         #         mac=mac,
-#         #         folder_path=path_file,
-#         #         file_path=file,
-#         #         edited_at=float(files['files'][file]),
-#         #         version=n_ver
-#         #     )
-#         return str(True)
-#     return app.make_response(('Bad request', 400))
-
-
-# delete folder
 @app.route('/delete_version/', methods=['GET'])
 @token_required
 def delete_version():
@@ -216,18 +185,6 @@ def get_folders():
             mac=request.args['mac']
         )
     return app.make_response(('Bad request', 400))
-
-
-# @app.route('/get_files/', methods=['GET'])
-# @token_required
-# def get_files():
-#     if request.method == 'GET':
-#         return database_actions.get_files(
-#             login=request.args['login'],
-#             mac=request.args['mac'],
-#             folder=request.args['folder'],
-#             version=request.args['version'],
-#         )
 
 
 @app.route('/make_actual/', methods=['GET'])
@@ -281,16 +238,37 @@ def get_actual_version():
 @token_required
 def download_folder():
     if request.method == 'GET':
-        return database_actions.download_folder(
+        response = flask.make_response()
+        response.data = database_actions.download_folder(
             login=request.args['login'],
             mac=request.args['mac'],
             path=request.args['path'],
             version=request.args['version'],
         )
+        return response
     return app.make_response(('Bad request', 400))
 
-# @app.route('/file/', methods=['GET'])
-# def file():
-#     response = send_from_directory(directory='your-directory', filename='your-file-name')
-#     response.headers['my-custom-header'] = 'my-custom-status-0'
-#     return response
+
+@app.route('/synchronize/', methods=['GET'])
+def synchronize():
+    if request.method == 'GET':
+        pass
+    return app.make_response(('Bad request', 400))
+
+
+@sio.on('join_room')
+def on_join(data):
+    username = data['username']
+    room = data['room']
+    join_room(room)
+    print('joined')
+    sio.send({'data': username + ' has entered the room'}, to=room)
+
+
+@sio.on('leave_room')
+def on_leave(data):
+    username = data['username']
+    room = data['room']
+    print('left')
+    sio.send({'data': username + ' has left the room'}, to=room)
+    leave_room(room)

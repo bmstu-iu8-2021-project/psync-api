@@ -37,7 +37,11 @@ def auth():
         password = request.args['password']
         mac = request.args['mac']
         token = ''
-        if database_actions.auth(login=login, password=password, mac=mac):
+        if database_actions.auth(
+                login=login,
+                password=password,
+                mac=mac,
+        ):
             token = jwt.encode({'user': login,
                                 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
                                 }, app.config['SECRET_KEY'])
@@ -83,7 +87,7 @@ def add_user():
             login=request.args['login'],
             mac=request.args['mac'],
             email=request.args['email'],
-            password=request.args['password']
+            password=request.args['password'],
         )
         return str(True)
     return app.make_response(('Bad request', 400))
@@ -102,7 +106,11 @@ def delete_user():
 @token_required
 def change_mail():
     if request.method == 'GET':
-        database_actions.change(login=request.args['login'], field='email', new_value=request.args['email'])
+        database_actions.change(
+            login=request.args['login'],
+            field='email',
+            new_value=request.args['email'],
+        )
         return str(True)
     return app.make_response(('Bad request', 400))
 
@@ -111,7 +119,11 @@ def change_mail():
 @token_required
 def change_password():
     if request.method == 'GET':
-        database_actions.change(login=request.args['login'], field='password', new_value=request.args['password'])
+        database_actions.change(
+            login=request.args['login'],
+            field='password',
+            new_value=request.args['password'],
+        )
         return str(True)
     return app.make_response(('Bad request', 400))
 
@@ -156,7 +168,7 @@ def delete_version():
             login=request.args['login'],
             mac=request.args['mac'],
             folder_path=request.args['folder_path'],
-            version=request.args['version']
+            version=request.args['version'],
         )
         os.remove(path)
         return str(True)
@@ -171,7 +183,7 @@ def find_version():
             login=request.args['login'],
             mac=request.args['mac'],
             folder_path=request.args['folder_path'],
-            version=request.args['version']
+            version=request.args['version'],
         ))
     return app.make_response(('Bad request', 400))
 
@@ -182,7 +194,7 @@ def get_folders():
     if request.method == 'GET':
         return database_actions.get_folders(
             login=request.args['login'],
-            mac=request.args['mac']
+            mac=request.args['mac'],
         )
     return app.make_response(('Bad request', 400))
 
@@ -253,12 +265,14 @@ def download_folder():
 @token_required
 def synchronize():
     if request.method == 'GET':
-        login = request.args['login']
-        sync_to = request.args['sync_to']
-        room = request.args['room']
-        if sync_to not in users:
+        other_user = request.args['other_user']
+        if other_user not in users:
             return str(False)
-        sio.send({'type': 'request_to_synchronize', 'receiver': sync_to, 'message': f'request from {login}'}, to=room)
+        sio.send({'type': 'request_to_synchronize',
+                  'current_user': request.args['current_user'],
+                  'current_folder': request.args['current_folder'],
+                  'current_mac': request.args['current_mac'],
+                  'other_user': request.args['other_user']}, to=request.args['room'])
         return str(True)
     return app.make_response(('Bad request', 400))
 
@@ -268,7 +282,7 @@ users = []
 
 @sio.on('join_room')
 def on_join(data):
-    users.append(data['username'])
+    users.append(data['current_user'])
     room = data['room']
     join_room(room)
     print('joined')
@@ -276,7 +290,32 @@ def on_join(data):
 
 @sio.on('leave_room')
 def on_leave(data):
-    users.remove(data['username'])
+    users.remove(data['current_user'])
     room = data['room']
     leave_room(room)
     print('left')
+
+
+@sio.on('send_answer')
+def on_answer(data):
+    choice = data['choice']
+    data['type'] = 'answer'
+    sio.send(data, to=data['room'])
+    if choice:
+        database_actions.synchronize(
+            current=(data['current_user'], data['current_mac'], data['current_folder']),
+            other=(data['other_user'], data['other_mac'], data['other_folder'])
+        )
+        # print(f"{data['current_user']} with {data['other_user']} ({data['current_mac']} with {data['other_mac']}):\n"
+        #       f"{data['current_folder']} and {data['other_folder']}")
+
+
+@app.route('/get_synchronized/', methods=['GET'])
+@token_required
+def get_synchronized():
+    if request.method == 'GET':
+        return database_actions.get_synchronized(
+            login=request.args['login'],
+            mac=request.args['mac']
+        )
+    return app.make_response(('Bad request', 400))

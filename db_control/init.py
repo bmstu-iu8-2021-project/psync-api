@@ -47,33 +47,32 @@ def create():
                 FOREIGN KEY (host_id) REFERENCES hosts (id) ON DELETE CASCADE
             );
             
-            CREATE TABLE IF NOT EXISTS replica_set
+            CREATE TABLE IF NOT EXISTS resources
             (
-                id       serial NOT NULL PRIMARY KEY,
-                agent_id int    NOT NULL,
-                type     int    NOT NULL,
+                id       serial       NOT NULL PRIMARY KEY,
+                agent_id int          NOT NULL,
+                path     varchar(300) NOT NULL,
                 FOREIGN KEY (agent_id) REFERENCES agent (id) ON DELETE CASCADE
             );
             
-            CREATE TABLE IF NOT EXISTS resources
+            CREATE TABLE IF NOT EXISTS replica_set
             (
-                id        serial       NOT NULL PRIMARY KEY,
-                agent_id  int          NOT NULL,
-                path      varchar(300) NOT NULL,
-                shared_id int,
-                FOREIGN KEY (agent_id) REFERENCES agent (id) ON DELETE CASCADE,
-                FOREIGN KEY (shared_id) REFERENCES replica_set (id) ON DELETE CASCADE
+                id                  serial NOT NULL PRIMARY KEY,
+                current_resource_id int    NOT NULL,
+                other_resource_id   int    NOT NULL,
+                FOREIGN KEY (current_resource_id) REFERENCES resources (id) ON DELETE CASCADE,
+                FOREIGN KEY (other_resource_id) REFERENCES resources (id) ON DELETE CASCADE
             );
             
             CREATE TABLE IF NOT EXISTS versions
             (
-                id           serial       NOT NULL PRIMARY KEY,
-                resources_id int          NOT NULL,
-                version      varchar(20)  NOT NULL,
-                created_at   timestamp    NOT NULL,
-                is_actual    bool         NOT NULL,
-                path         varchar(300) NOT NULL,
-                FOREIGN KEY (resources_id) REFERENCES resources (id) ON DELETE CASCADE
+                id          serial       NOT NULL PRIMARY KEY,
+                resource_id int          NOT NULL,
+                version     varchar(20)  NOT NULL,
+                created_at  timestamp    NOT NULL,
+                is_actual   bool         NOT NULL,
+                path        varchar(300) NOT NULL,
+                FOREIGN KEY (resource_id) REFERENCES resources (id) ON DELETE CASCADE
             );
         ''')
     connection.close()

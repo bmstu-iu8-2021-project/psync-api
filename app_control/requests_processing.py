@@ -16,6 +16,7 @@ import files_actions
 def token_required(req):
     @wraps(req)
     def decorated(*args, **kwargs):
+        # print(request.headers)
         if 'Authorization' not in request.headers:
             return app.make_response(('Token was not find', 400))
         token = json.loads(request.headers['Authorization'])['token']
@@ -217,7 +218,7 @@ def make_actual():
 @token_required
 def check_actuality():
     if request.method == 'GET':
-        return json.dumps(files_actions.get_difference(json.loads(request.data.decode('UTF-8'))))
+        return database_actions.get_difference(data=request.json)
     return app.make_response(('Bad request', 400))
 
 
@@ -306,8 +307,6 @@ def on_answer(data):
             current=(data['current_user'], data['current_mac'], data['current_folder']),
             other=(data['other_user'], data['other_mac'], data['other_folder'])
         )
-        # print(f"{data['current_user']} with {data['other_user']} ({data['current_mac']} with {data['other_mac']}):\n"
-        #       f"{data['current_folder']} and {data['other_folder']}")
 
 
 @app.route('/get_synchronized/', methods=['GET'])
@@ -318,4 +317,81 @@ def get_synchronized():
             login=request.args['login'],
             mac=request.args['mac']
         )
+    return app.make_response(('Bad request', 400))
+
+
+@app.route('/terminate_sync/', methods=['GET'])
+@token_required
+def terminate_sync():
+    if request.method == 'GET':
+        database_actions.terminate_sync(
+            current_login=request.args['current_login'],
+            other_login=request.args['other_login'],
+            current_folder=request.args['current_folder'],
+            other_folder=request.args['other_folder'],
+            current_mac=request.args['current_mac']
+        )
+        return str(True)
+    return app.make_response(('Bad request', 400))
+
+
+@app.route('/check_synchronized/', methods=['GET'])
+@token_required
+def check_synchronized():
+    if request.method == 'GET':
+        return database_actions.check_synchronized(
+            login=request.args['login'],
+            mac=request.args['mac']
+        )
+    return app.make_response(('Bad request', 400))
+
+
+@app.route('/update_version/', methods=['GET'])
+@token_required
+def update_version():
+    if request.method == 'GET':
+        database_actions.update_version(
+            login=request.args['login'],
+            mac=request.args['mac'],
+            path_file=request.args['path_file'],
+            version=request.args['version']
+        )
+        return str(True)
+    return app.make_response(('Bad request', 400))
+
+
+@app.route('/terminate_all_sync/', methods=['GET'])
+@token_required
+def terminate_all_sync():
+    if request.method == 'GET':
+        database_actions.terminate_all_sync(
+            login=request.args['login'],
+            mac=request.args['mac'],
+            path=request.args['path']
+        )
+        return str(True)
+    return app.make_response(('Bad request', 400))
+
+
+@app.route('/terminate_pair_sync/', methods=['GET'])
+@token_required
+def terminate_pair_sync():
+    if request.method == 'GET':
+        database_actions.terminate_pair_sync(
+            current_login=request.args['current_login'],
+            current_mac=request.args['current_mac'],
+            current_folder=request.args['current_folder'],
+
+        )
+    return app.make_response(('Bad request', 400))
+
+
+@app.route('/synchronize_folder/', methods=['GET'])
+@token_required
+def synchronize_folder():
+    if request.method == 'GET':
+        pass
+        # database_actions.synchronize(
+        #
+        # )
     return app.make_response(('Bad request', 400))

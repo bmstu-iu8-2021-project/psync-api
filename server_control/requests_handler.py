@@ -9,14 +9,12 @@ from flask_socketio import join_room, leave_room
 import jwt
 
 from db_control import database_actions
-from app_control.init import app, sio
-import files_actions
+from server_control.init import app, sio
 
 
 def token_required(req):
     @wraps(req)
     def decorated(*args, **kwargs):
-        # print(request.headers)
         if 'Authorization' not in request.headers:
             return app.make_response(('Token was not find', 400))
         token = json.loads(request.headers['Authorization'])['token']
@@ -252,12 +250,19 @@ def get_actual_version():
 def download_folder():
     if request.method == 'GET':
         response = flask.make_response()
-        response.data = database_actions.download_folder(
-            login=request.args['login'],
-            mac=request.args['mac'],
-            path=request.args['path'],
-            version=request.args['version'],
-        )
+        if not request.args['flag']:
+            response.data = database_actions.download_folder(
+                login=request.args['login'],
+                mac=request.args['mac'],
+                path=request.args['path'],
+                version=request.args['version'],
+            )
+        else:
+            response.data = database_actions.download_folder(
+                login=request.args['login'],
+                mac=request.args['mac'],
+                path=request.args['path'],
+            )
         return response
     return app.make_response(('Bad request', 400))
 
@@ -360,38 +365,42 @@ def update_version():
     return app.make_response(('Bad request', 400))
 
 
-@app.route('/terminate_all_sync/', methods=['GET'])
-@token_required
-def terminate_all_sync():
-    if request.method == 'GET':
-        database_actions.terminate_all_sync(
-            login=request.args['login'],
-            mac=request.args['mac'],
-            path=request.args['path']
-        )
-        return str(True)
-    return app.make_response(('Bad request', 400))
+# @app.route('/terminate_all_sync/', methods=['GET'])
+# @token_required
+# def terminate_all_sync():
+#     if request.method == 'GET':
+#         database_actions.terminate_all_sync(
+#             login=request.args['login'],
+#             mac=request.args['mac'],
+#             path=request.args['path']
+#         )
+#         return str(True)
+#     return app.make_response(('Bad request', 400))
 
 
-@app.route('/terminate_pair_sync/', methods=['GET'])
-@token_required
-def terminate_pair_sync():
-    if request.method == 'GET':
-        database_actions.terminate_pair_sync(
-            current_login=request.args['current_login'],
-            current_mac=request.args['current_mac'],
-            current_folder=request.args['current_folder'],
-
-        )
-    return app.make_response(('Bad request', 400))
+# @app.route('/terminate_pair_sync/', methods=['GET'])
+# @token_required
+# def terminate_pair_sync():
+#     if request.method == 'GET':
+#         database_actions.terminate_pair_sync(
+#             current_login=request.args['current_login'],
+#             current_mac=request.args['current_mac'],
+#             current_folder=request.args['current_folder'],
+#
+#         )
+#     return app.make_response(('Bad request', 400))
 
 
 @app.route('/synchronize_folder/', methods=['GET'])
 @token_required
 def synchronize_folder():
     if request.method == 'GET':
-        pass
-        # database_actions.synchronize(
-        #
-        # )
+        database_actions.synchronize_folder(
+            current_login=request.args['current_login'],
+            current_mac=request.args['current_mac'],
+            other_login=request.args['current_login'],
+            current_folder=request.args['current_login'],
+            other_folder=request.args['current_login']
+        )
+        return str(True)
     return app.make_response(('Bad request', 400))

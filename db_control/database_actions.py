@@ -5,7 +5,7 @@ import bcrypt
 import datetime
 
 from db_control.init import connect, close
-import files_actions
+from db_control import files_actions
 
 
 def auth(login, password, mac):
@@ -297,7 +297,7 @@ def find_version(login, mac, folder_path, version):
             WHERE agent_id = {agent_id} AND path = '{folder_path}';
         ''')
         resources_id = cursor.fetchone()
-        if not (resources_id is None):
+        if resources_id is not None:
             cursor.execute(f'''
                 SELECT version 
                 FROM coursework.public.versions 
@@ -306,18 +306,6 @@ def find_version(login, mac, folder_path, version):
             get = cursor.fetchone()
     close(conn)
     return str(get is None)
-
-
-# def get_json(output, path, version_info, *args):
-#     if output is None or len(output.keys()) == 0:
-#         output = dict()
-#         for arg in args:
-#             output[arg] = list()
-#     for row in version_info:
-#         output[args[0]].append(path)
-#         for arg in args[1:]:
-#             output[arg].append(str(row[args[1:].index(arg)]))
-#     return output
 
 
 def get_folders(login, mac):
@@ -414,16 +402,23 @@ def get_actual_version(login, mac, path):
     return version
 
 
-def download_folder(login, mac, path, version):
+def download_folder(login, mac, path, version=None):
     agent_id = get_agent_id(login, mac)
     resources_id = get_resources_id(agent_id, path)
     conn = connect()
     with conn.cursor() as cursor:
-        cursor.execute(f'''
-            SELECT path 
-            FROM coursework.public.versions 
-            WHERE resource_id = {resources_id} AND version = '{version}';
-        ''')
+        if version is not None:
+            cursor.execute(f'''
+                SELECT path 
+                FROM coursework.public.versions 
+                WHERE resource_id = {resources_id} AND version = '{version}';
+            ''')
+        else:
+            cursor.execute(f'''
+                SELECT path
+                FROM coursework.public.versions
+                WHERE resource_id = {resources_id} AND is_actual = True;
+            ''')
         server_path = cursor.fetchone()[0]
     close(conn)
     return codecs.open(server_path, 'rb').read()
@@ -577,7 +572,7 @@ def terminate_sync(current_login, other_login, current_folder, other_folder, cur
                 FROM coursework.public.resources
                          JOIN coursework.public.versions ON coursework.public.resources.id = coursework.public.versions.resource_id
                 WHERE is_actual = True
-                  AND coursework.public.resources.path = '{other_folder}';
+                  AND coursework.public.resources.path = '{other_folder}' AND agent_id = {other_agent_id};
             ''')
             output = cursor.fetchone()
             if output is not None:
@@ -694,14 +689,48 @@ def update_version(login, mac, path_file, version):
     close(conn)
 
 
-def terminate_all_sync(login, mac, path):
-    agent_id = get_agent_id(login, mac)
-    resource_id = get_resources_id(agent_id, path)
+# def terminate_all_sync(login, mac, path):
+#     agent_id = get_agent_id(login, mac)
+#     resource_id = get_resources_id(agent_id, path)
+#     conn = connect()
+#     with conn.cursor() as cursor:
+#         cursor.execute(f'''
+#             DELETE
+#             FROM coursework.public.replica_set
+#             WHERE current_resource_id = {resource_id} OR other_resource_id = {resource_id};
+#         ''')
+#     close(conn)
+
+
+def synchronize_folder(current_login, current_mac, current_folder, other_login, other_folder):
+    current_agent_id = get_agent_id(current_login, current_mac)
+    current_resource_id = get_resources_id(current_agent_id, current_folder)
     conn = connect()
     with conn.cursor() as cursor:
         cursor.execute(f'''
-            DELETE
-            FROM coursework.public.replica_set
-            WHERE current_resource_id = {resource_id} OR other_resource_id = {resource_id};
+            SELECT path
+            FROM coursework.public.versions
+            WHERE resource_id = {current_resource_id};
         ''')
+        current_pair = (cursor.fetchone()[0], current_folder)
+        other_pair = [None, other_folder]
+        cursor.execute(f'''
+            SELECT coursework.public.agent.id
+            FROM coursework.public.agent
+                     JOIN coursework.public.persons ON coursework.public.persons.id = coursework.public.agent.person_id
+            WHERE login = '{other_login}';
+        ''')
+        other_agents_id = [i[0] for i in cursor.fetchall()]
+        for other_agent_id in other_agents_id:
+            cursor.execute(f'''
+                SELECT coursework.public.versions.path
+                FROM coursework.public.versions
+                         JOIN coursework.public.resources ON coursework.public.resources.id = coursework.public.versions.resource_id
+                WHERE agent_id = {other_agent_id} AND coursework.public.resources.path = '{other_folder}';
+            ''')
+            other_version_path = cursor.fetchone()[0]
+            if other_version_path is not None:
+                other_version_path[0] = cursor.fetchone()[0]
     close(conn)
+    print(current_pair, other_pair, sep='\n')
+    # files_actions.merge(current_pair, other_pair)

@@ -3,7 +3,7 @@ import time
 import os
 from os.path import join
 import shutil
-from app_control.init import app
+from server_control.init import app
 
 storage = app.config['UPLOAD_FOLDER']
 
@@ -48,9 +48,31 @@ def compare_archives(current_archive, other_archive):
     return False
 
 
+# разархивация с сохранением метаданных
+def unzip_with_meta(archive, destination):
+    # разархивируем архив в папку назначения
+    arch = ZipFile(archive, 'r')
+    arch.extractall(destination)
+    arch_data = {}
+    arch_root = 'home'
+    # записываем в словарь даты последнего изменения каждого файла
+    for file in arch.namelist():
+        arch_root = file[:file.find('/')]
+        arch_data[file] = time.mktime(tuple(list(arch.getinfo(file).date_time) + [0, 0, 0]))
+    arch.close()
+    # возвращаем разархивированным файлам их даты изменения
+    for root, dirs, files in os.walk(join(destination, arch_root)):
+        for file in files:
+            os.utime(
+                join(root, file),
+                (arch_data[join(root, file).replace(destination + '/', '')],
+                 arch_data[join(root, file).replace(destination + '/', '')])
+            )
+
+
 # во входе 0 - путь к архиву, 1 - путь к архивируему, то есть выбранная папка внутри архива
 # разархивируем архив
-def take_out(current_archive, other_archive):
+def merge(current_archive, other_archive):
     # разархивируем архив текущего пользователя во временную папку, при этом сохраним дату изменения
     current = ZipFile(current_archive[0], 'r')
     temp = str(time.time())
@@ -81,25 +103,3 @@ def take_out(current_archive, other_archive):
     shutil.rmtree(join(storage, temp))
     # замещаем архив текущего пользователя слитым
     os.rename(join(storage, f'{temp}.zip'), join(current_archive[0]))
-
-
-# разархивация с сохранением метаданных
-def unzip_with_meta(archive, destination):
-    # разархивируем архив в папку назначения
-    arch = ZipFile(archive, 'r')
-    arch.extractall(destination)
-    arch_data = {}
-    arch_root = 'home'
-    # записываем в словарь даты последнего изменения каждого файла
-    for file in arch.namelist():
-        arch_root = file[:file.find('/')]
-        arch_data[file] = time.mktime(tuple(list(arch.getinfo(file).date_time) + [0, 0, 0]))
-    arch.close()
-    # возвращаем разархивированным файлам их даты изменения
-    for root, dirs, files in os.walk(join(destination, arch_root)):
-        for file in files:
-            os.utime(
-                join(root, file),
-                (arch_data[join(root, file).replace(destination + '/', '')],
-                 arch_data[join(root, file).replace(destination + '/', '')])
-            )

@@ -1,47 +1,19 @@
-# from flask_sqlalchemy import SQLAlchemy
-# from app_control.init import app
-#
-# user_db = SQLAlchemy(app)
-#
-#
-# class Users(user_db.Model):
-#     __tablename__ = 'Users'
-#     login = user_db.Column(user_db.String(100), primary_key=True, nullable=False)
-#     mail = user_db.Column(user_db.String(100), unique=True, nullable=False)
-#     password = user_db.Column(user_db.String(100), nullable=False)
-#
-#
-# class Folders(user_db.Model):
-#     __tablename__ = 'Folders'
-#     id = user_db.Column(user_db.Integer, primary_key=True)
-#     login = user_db.Column(user_db.String(100), user_db.ForeignKey('Users.login'))
-#     mac = user_db.Column(user_db.String(50), nullable=False)
-#     folder_path = user_db.Column(user_db.String(200), nullable=False)
-#     folder_version = user_db.Column(user_db.String(50), default='')
-#     folder_id = user_db.Column(user_db.Integer, default=-1)
-#
-#
-# class Files(user_db.Model):
-#     __tablename__ = 'Files'
-#     id = user_db.Column(user_db.Integer, primary_key=True)
-#     login = user_db.Column(user_db.String(100), user_db.ForeignKey('Folders.login'))
-#     mac = user_db.Column(user_db.String(50), user_db.ForeignKey('Folders.mac'))
-#     folder_path = user_db.Column(user_db.String(200), user_db.ForeignKey('Folders.folder_path'))
-#     filename = user_db.Column(user_db.String(400), nullable=False)
-#     edited_at = user_db.Column(user_db.Float, nullable=False)
-#     file_version = user_db.Column(user_db.String(50), default='')
-
 import psycopg2
-from config import HOST, PORT, USER, PASSWORD, DB_NAME
+import os
+from dotenv import load_dotenv
+
+dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+if os.path.exists(dotenv_path):
+    load_dotenv(dotenv_path)
 
 
 def connect():
     connection = psycopg2.connect(
-        host=HOST,
-        port=PORT,
-        user=USER,
-        password=PASSWORD,
-        database=DB_NAME
+        host=os.environ['DB_HOST'],
+        port=os.environ['DB_PORT'],
+        user=os.environ['DB_USER'],
+        password=os.environ['DB_PASSWORD'],
+        database=os.environ['DB_NAME']
     )
     connection.autocommit = True
     return connection
@@ -54,28 +26,53 @@ def create():
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS persons
             (
-                login    varchar(50) NOT NULL PRIMARY KEY,
+                id       serial      NOT NULL PRIMARY KEY,
+                login    varchar(20) NOT NULL UNIQUE,
                 email    varchar(50) NOT NULL UNIQUE,
-                password varchar(40) NOT NULL
+                password varchar(60) NOT NULL
             );
-            CREATE TABLE IF NOT EXISTS folders
+            
+            CREATE TABLE IF NOT EXISTS hosts
             (
-                login     varchar(50)  NOT NULL,
-                mac       varchar(30)  NOT NULL,
-                user_id   int          NOT NULL,
-                folder    varchar(300) NOT NULL,
-                version   varchar(20)  NOT NULL,
-                folder_id int          NOT NULL,
-                PRIMARY KEY (user_id, folder_id),
-                FOREIGN KEY (login) REFERENCES persons (login) ON DELETE CASCADE
+                id  serial      NOT NULL PRIMARY KEY,
+                mac varchar(30) NOT NULL UNIQUE
             );
-            CREATE TABLE IF NOT EXISTS files
+            
+            CREATE TABLE IF NOT EXISTS agent
             (
-                user_id   int          NOT NULL,
-                folder_id int          NOT NULL,
-                file      varchar(100) NOT NULL,
-                edited_at float        NOT NULL,
-                FOREIGN KEY (user_id, folder_id) REFERENCES folders (user_id, folder_id) ON DELETE CASCADE
+                id        serial NOT NULL PRIMARY KEY,
+                person_id int    NOT NULL,
+                host_id   int    NOT NULL,
+                FOREIGN KEY (person_id) REFERENCES persons (id) ON DELETE CASCADE,
+                FOREIGN KEY (host_id) REFERENCES hosts (id) ON DELETE CASCADE
+            );
+            
+            CREATE TABLE IF NOT EXISTS resources
+            (
+                id       serial       NOT NULL PRIMARY KEY,
+                agent_id int          NOT NULL,
+                path     varchar(300) NOT NULL,
+                FOREIGN KEY (agent_id) REFERENCES agent (id) ON DELETE CASCADE
+            );
+            
+            CREATE TABLE IF NOT EXISTS replica_set
+            (
+                id                  serial NOT NULL PRIMARY KEY,
+                current_resource_id int    NOT NULL,
+                other_resource_id   int    NOT NULL,
+                FOREIGN KEY (current_resource_id) REFERENCES resources (id) ON DELETE CASCADE,
+                FOREIGN KEY (other_resource_id) REFERENCES resources (id) ON DELETE CASCADE
+            );
+            
+            CREATE TABLE IF NOT EXISTS versions
+            (
+                id          serial       NOT NULL PRIMARY KEY,
+                resource_id int          NOT NULL,
+                version     varchar(20)  NOT NULL,
+                created_at  timestamp    NOT NULL,
+                is_actual   bool         NOT NULL,
+                path        varchar(300) NOT NULL,
+                FOREIGN KEY (resource_id) REFERENCES resources (id) ON DELETE CASCADE
             );
         ''')
     connection.close()

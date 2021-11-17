@@ -6,6 +6,7 @@ import datetime
 
 from db_control.init import connect, close
 from db_control import files_actions
+from server_control.init import app
 
 
 def auth(login, password, mac):
@@ -31,6 +32,15 @@ def auth(login, password, mac):
                 host_id = cursor.fetchone()
                 if host_id is None:
                     host_id = add_host(mac)
+                else:
+                    host_id = host_id[0]
+                cursor.execute(f'''
+                    SELECT id 
+                    FROM coursework.public.agent 
+                    WHERE person_id = {person_id} AND host_id = {host_id};
+                ''')
+                agent_id = cursor.fetchone()
+                if agent_id is None:
                     cursor.execute(f'''
                         INSERT INTO coursework.public.agent (person_id, host_id) 
                         VALUES({person_id}, {host_id});
@@ -170,7 +180,7 @@ def add_host(mac):
             FROM coursework.public.hosts 
             WHERE mac = '{mac}';
         ''')
-        host_id = cursor.fetchone()
+        host_id = cursor.fetchone()[0]
     close(conn)
     return host_id
 
@@ -260,7 +270,7 @@ def find_version(login, mac, folder_path, version):
     return str(get is None)
 
 
-def add_version(login, mac, folder_path, version, is_actual, path):
+def add_version(login, mac, folder_path, version, is_actual):
     agent_id = get_agent_id(login, mac)
     conn = connect()
     with conn.cursor() as cursor:
@@ -281,6 +291,8 @@ def add_version(login, mac, folder_path, version, is_actual, path):
         ''')
         res_id = int(cursor.fetchone()[0])
 
+        path = os.path.join(app.config['UPLOAD_FOLDER'], '_'.join([login, folder_path[folder_path.rfind('/') + 1:],
+                                                                   version]) + '.zip')
         cursor.execute(f'''
         INSERT INTO coursework.public.versions (resource_id, version, created_at, is_actual, path) 
         VALUES({res_id}, '{version}', '{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}', {is_actual}, '{path}');
@@ -429,9 +441,12 @@ def get_actual_version(login, mac, path):
             FROM coursework.public.versions 
             WHERE resource_id = {resources_id} AND is_actual = True;
         ''')
-        version = cursor.fetchone()[0]
+        version = cursor.fetchone()
     close(conn)
-    return version
+    if version is not None:
+        return version[0]
+    else:
+        return version
 
 
 def get_difference(data):
@@ -458,19 +473,20 @@ def synchronize(current, other):
     other_agent_id = get_agent_id(other[0], other[1])
     current_resource_id = get_resources_id(current_agent_id, current[2])
     other_resource_id = get_resources_id(other_agent_id, other[2])
-    conn = connect()
-    with conn.cursor() as cursor:
-        cursor.execute(f'''
-            SELECT id 
-            FROM coursework.public.replica_set 
-            WHERE current_resource_id = {other_resource_id} AND other_resource_id = {current_resource_id};
-        ''')
-        if cursor.fetchone() is None:
+    if current[0] != other[0]:
+        conn = connect()
+        with conn.cursor() as cursor:
             cursor.execute(f'''
-                INSERT INTO coursework.public.replica_set (current_resource_id, other_resource_id) 
-                VALUES({current_resource_id}, {other_resource_id});
+                SELECT id 
+                FROM coursework.public.replica_set 
+                WHERE current_resource_id = {other_resource_id} AND other_resource_id = {current_resource_id};
             ''')
-    close(conn)
+            if cursor.fetchone() is None:
+                cursor.execute(f'''
+                    INSERT INTO coursework.public.replica_set (current_resource_id, other_resource_id) 
+                    VALUES({current_resource_id}, {other_resource_id});
+                ''')
+        close(conn)
 
 
 def synchronize_folder(current_login, current_mac, current_folder, other_login, other_folder):
@@ -508,121 +524,99 @@ def synchronize_folder(current_login, current_mac, current_folder, other_login, 
     files_actions.merge(current_pair, other_pair)
 
 
-def terminate_sync(current_login, other_login, current_folder, other_folder, current_mac):
-    agent_id = get_agent_id(current_login, current_mac)
-    resource_id = get_resources_id(agent_id, current_folder)
+def terminate_sync(current_login, other_id, current_folder, other_folder, current_mac):
+    current_agent_id = get_agent_id(current_login, current_mac)
+    current_resource_id = get_resources_id(current_agent_id, current_folder)
+    other_resource_id = get_resources_id(other_id, other_folder)
     conn = connect()
     with conn.cursor() as cursor:
         cursor.execute(f'''
-            SELECT coursework.public.agent.id
-            FROM coursework.public.agent
-                     JOIN coursework.public.persons ON coursework.public.persons.id = coursework.public.agent.person_id
-            WHERE login = '{other_login}';
-        ''')
-        other_agents_id = [i[0] for i in cursor.fetchall()]
-        other_resource_id = -1
-        for other_agent_id in other_agents_id:
-            cursor.execute(f'''
-                SELECT coursework.public.resources.id
-                FROM coursework.public.resources
-                         JOIN coursework.public.versions ON coursework.public.resources.id = coursework.public.versions.resource_id
-                WHERE is_actual = True
-                  AND coursework.public.resources.path = '{other_folder}' AND agent_id = {other_agent_id};
-            ''')
-            output = cursor.fetchone()
-            if output is not None:
-                other_resource_id = output[0]
-        cursor.execute(f'''
             DELETE
             FROM coursework.public.replica_set
-            WHERE (current_resource_id = {resource_id} AND other_resource_id = {other_resource_id})
-               OR (other_resource_id = {resource_id} AND current_resource_id = {other_resource_id});
+            WHERE (current_resource_id = {current_resource_id} AND other_resource_id = {other_resource_id})
+               OR (current_resource_id = {other_resource_id} AND other_resource_id = {current_resource_id});
         ''')
     close(conn)
 
 
-def get_synchronized(login, mac):
+def get_pairs_resource_id(login, mac):
     agent_id = get_agent_id(login, mac)
+    other_resources_id = []
     conn = connect()
     with conn.cursor() as cursor:
-        table = []
         cursor.execute(f'''
-            SELECT coursework.public.resources.id
+            SELECT id
             FROM coursework.public.resources
-                     JOIN coursework.public.replica_set ON coursework.public.resources.id = current_resource_id OR
-                                                           coursework.public.resources.id = other_resource_id
             WHERE agent_id = {agent_id};
         ''')
-        shared_resources_id = [i[0] for i in cursor.fetchall()]
-        for resource_id in shared_resources_id:
+        result = cursor.fetchall()
+        if result is not None:
+            resources_id = [i[0] for i in result]
+            for resource_id in resources_id:
+                cursor.execute(f'''
+                    SELECT current_resource_id
+                    FROM coursework.public.replica_set
+                    WHERE other_resource_id = {resource_id};
+                ''')
+                result = cursor.fetchall()
+                if result is not None:
+                    other_resources_id += [tuple([resource_id, i[0]]) for i in result]
+
+                cursor.execute(f'''
+                    SELECT other_resource_id
+                    FROM coursework.public.replica_set
+                    WHERE current_resource_id = {resource_id};
+                ''')
+                result = cursor.fetchall()
+                if result is not None:
+                    other_resources_id += [tuple([resource_id, i[0]]) for i in result]
+    close(conn)
+    return other_resources_id
+
+
+def get_synchronized(login, mac):
+    pairs = get_pairs_resource_id(login, mac)
+    table = []
+    conn = connect()
+    with conn.cursor() as cursor:
+        for pair in pairs:
             cursor.execute(f'''
                 SELECT coursework.public.resources.path, coursework.public.versions.created_at
                 FROM coursework.public.resources
-                         JOIN coursework.public.versions ON coursework.public.resources.id = resource_id
-                WHERE is_actual = True
-                  AND resource_id = {resource_id};            
+                         JOIN coursework.public.versions ON coursework.public.resources.id = coursework.public.versions.resource_id
+                WHERE coursework.public.resources.id = {pair[0]};
             ''')
-            current_folder, current_time = cursor.fetchone()
-
+            current_path, current_time = cursor.fetchone()
             cursor.execute(f'''
-                SELECT current_resource_id
-                FROM coursework.public.replica_set
-                WHERE other_resource_id = {resource_id}
-                UNION
-                SELECT other_resource_id
-                FROM coursework.public.replica_set
-                WHERE current_resource_id = {resource_id};
+                SELECT agent_id, path
+                FROM coursework.public.resources
+                WHERE id = {pair[1]};
             ''')
-            opposite_resource_id = [i[0] for i in cursor.fetchall()]
-            for opp_res_id in opposite_resource_id:
-                cursor.execute(f'''
-                    SELECT path
-                    FROM coursework.public.resources
-                    WHERE id = {opp_res_id};        
-                ''')
-                other_folder = cursor.fetchone()[0]
-                cursor.execute(f'''
-                    SELECT login
-                    FROM coursework.public.persons
-                    WHERE id IN
-                          (SELECT person_id
-                           FROM coursework.public.agent
-                           WHERE id IN
-                                 (SELECT agent_id FROM coursework.public.resources WHERE id = {opp_res_id}));
-                ''')
-                other_login = cursor.fetchone()[0]
-                table.append({
-                    'other_login': other_login,
-                    'current_folder': current_folder,
-                    'other_folder': other_folder,
-                    'current_time': str(current_time)
-                })
+            other_id, other_folder = cursor.fetchone()
+            cursor.execute(f'''
+                SELECT login
+                FROM coursework.public.persons
+                         JOIN coursework.public.agent ON coursework.public.persons.id = coursework.public.agent.person_id
+                WHERE coursework.public.agent.id = {other_id};
+            ''')
+            other_login = cursor.fetchone()[0]
+            table.append({
+                'other_id': str(other_id),
+                'other_login': other_login,
+                'current_folder': current_path,
+                'other_folder': other_folder,
+                'current_time': str(current_time)
+            })
     close(conn)
     return json.dumps(table)
 
 
 def check_synchronized(login, mac):
-    to_sync = {'items': []}
-    agent_id = get_agent_id(login, mac)
+    pairs = get_pairs_resource_id(login, mac)
+    table = []
     conn = connect()
     with conn.cursor() as cursor:
-        cursor.execute(f'''
-            SELECT current_resource_id, other_resource_id
-            FROM coursework.public.replica_set
-                     JOIN coursework.public.resources ON
-                        coursework.public.resources.id = current_resource_id OR coursework.public.resources.id = other_resource_id
-            WHERE coursework.public.resources.agent_id = {agent_id};
-        ''')
-        pairs = [list(i) for i in cursor.fetchall()]
         for pair in pairs:
-            cursor.execute(f'''
-                SELECT path
-                FROM coursework.public.resources
-                WHERE agent_id = {agent_id} AND id = {pair[0]}
-            ''')
-            if cursor.fetchone() is None:
-                pair[0], pair[1] = pair[1], pair[0]
-            # 0 -> current_user
             cursor.execute(f'''
                 SELECT coursework.public.versions.path, coursework.public.resources.path
                 FROM coursework.public.resources
@@ -631,7 +625,6 @@ def check_synchronized(login, mac):
                   AND coursework.public.resources.id = {pair[0]};
             ''')
             current_pair = cursor.fetchone()
-
             cursor.execute(f'''
                 SELECT coursework.public.versions.path, coursework.public.resources.path
                 FROM coursework.public.resources
@@ -640,78 +633,34 @@ def check_synchronized(login, mac):
                   AND coursework.public.resources.id = {pair[1]};
             ''')
             other_pair = cursor.fetchone()
-
-            cursor.execute(f'''
-                SELECT coursework.public.resources.id
-                FROM coursework.public.versions
-                         JOIN coursework.public.resources ON coursework.public.resources.id = coursework.public.versions.resource_id
-                WHERE coursework.public.versions.path = '{other_pair[1]}'
-                  AND agent_id = {agent_id};
-            ''')
             if not files_actions.compare_archives(
                     current_archive=current_pair,
                     other_archive=other_pair
             ):
                 cursor.execute(f'''
+                    SELECT agent_id, path
+                    FROM coursework.public.resources
+                    WHERE id = {pair[1]};
+                ''')
+                other_id, other_folder = cursor.fetchone()
+                cursor.execute(f'''
+                    SELECT path
+                    FROM coursework.public.resources
+                    WHERE id = {pair[0]};
+                ''')
+                current_path = cursor.fetchone()[0]
+                cursor.execute(f'''
                     SELECT login
                     FROM coursework.public.persons
                              JOIN coursework.public.agent ON coursework.public.persons.id = coursework.public.agent.person_id
-                             JOIN coursework.public.resources ON coursework.public.agent.id = coursework.public.resources.agent_id
-                             JOIN coursework.public.versions ON coursework.public.resources.id = coursework.public.versions.resource_id
-                    WHERE coursework.public.resources.path = '{other_pair[1]}';
+                    WHERE coursework.public.agent.id = {other_id};
                 ''')
-                to_sync['items'].append({
-                    'other_user': cursor.fetchone()[0],
-                    'current_folder': current_pair[1],
-                    'other_folder': other_pair[1]
+                other_login = cursor.fetchone()[0]
+                table.append({
+                    'other_id': str(other_id),
+                    'other_user': other_login,
+                    'current_folder': current_path,
+                    'other_folder': other_folder
                 })
     close(conn)
-    return json.dumps(to_sync)
-
-# def terminate_sync(current_login, other_login, current_folder, other_folder, current_mac):
-#     current_agent_id = get_agent_id(current_login, current_mac)
-#     current_resource_id = get_resources_id(current_agent_id, current_folder)
-#     conn = connect()
-#     with conn.cursor() as cursor:
-#         cursor.execute(f'''
-#         SELECT current_resource_id
-#         FROM coursework.public.replica_set
-#         WHERE other_resource_id IN (SELECT coursework.public.resources.id
-#                                     FROM coursework.public.resources
-#                                              JOIN coursework.public.versions ON
-#                                                 coursework.public.resources.id = resource_id AND is_actual = True AND
-#                                                 agent_id = {current_agent_id})
-#         UNION
-#         SELECT other_resource_id
-#         FROM coursework.public.replica_set
-#         WHERE current_resource_id IN (SELECT coursework.public.resources.id
-#                                       FROM coursework.public.resources
-#                                                JOIN coursework.public.versions ON
-#                                                   coursework.public.resources.id = resource_id AND is_actual = True AND
-#                                                   agent_id = {current_agent_id});
-#         ''')
-#         opposite_resource_id = [i[0] for i in cursor.fetchall()]
-#         print(opposite_resource_id)
-#         for resource_id in opposite_resource_id:
-#             cursor.execute(f'''
-#                 SELECT login
-#                 FROM coursework.public.persons
-#                 WHERE id IN
-#                       (SELECT person_id
-#                        FROM coursework.public.agent
-#                        WHERE id IN
-#                              (SELECT agent_id FROM coursework.public.resources WHERE id = {resource_id}))
-#                 UNION
-#                 SELECT path
-#                 FROM coursework.public.resources
-#                 WHERE id = {resource_id};
-#             ''')
-#             opposite_info = cursor.fetchall()
-#             if opposite_info[0][0] == other_folder and opposite_info[1][0] == other_login:
-#                 cursor.execute(f'''
-#                     DELETE
-#                     FROM coursework.public.replica_set
-#                     WHERE (other_resource_id = {resource_id} AND current_resource_id = {current_resource_id})
-#                        OR (other_resource_id = {current_resource_id} AND current_resource_id = {resource_id})
-#                 ''')
-#     close(conn)
+    return json.dumps(table)

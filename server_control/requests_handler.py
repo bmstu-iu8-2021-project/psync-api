@@ -150,10 +150,8 @@ def add_version():
             mac=files['mac'],
             folder_path=files['path_file'],
             version=files['new_version'],
-            is_actual=files['is_actual'],
-            path=os.path.join(app.config['UPLOAD_FOLDER'], '_'.join(
-                [files['login'], files['path_file'][files['path_file'].rfind('/') + 1:],
-                 files['new_version']]) + '.zip'))
+            is_actual=files['is_actual']
+        )
         return str(True)
     return app.make_response(('Bad request', 400))
 
@@ -310,7 +308,7 @@ def terminate_sync():
     if request.method == 'GET':
         database_actions.terminate_sync(
             current_login=request.args['current_login'],
-            other_login=request.args['other_login'],
+            other_id=request.args['other_id'],
             current_folder=request.args['current_folder'],
             other_folder=request.args['other_folder'],
             current_mac=request.args['current_mac']

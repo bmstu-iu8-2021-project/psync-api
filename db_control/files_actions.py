@@ -34,13 +34,24 @@ def get_dict(pair):
     return archive_content
 
 
+# def compare_archives(current_archive, other_archive):
+#     archive_one = get_dict(current_archive)
+#     archive_two = get_dict(other_archive)
+#     if set(archive_one.keys()) - set(archive_two.keys()) == set() and set(archive_two.keys()) - set(
+#             archive_one.keys()) == set():
+#         for file in archive_one.keys():
+#             if abs(archive_one[file] - archive_two[file]) > 5:
+#                 return False
+#         return True
+#     return False
+
+
 def compare_archives(current_archive, other_archive):
-    archive_one = get_dict(current_archive)
-    archive_two = get_dict(other_archive)
-    if set(archive_one.keys()) - set(archive_two.keys()) == set() and set(archive_two.keys()) - set(
-            archive_one.keys()) == set():
-        for file in archive_one.keys():
-            if abs(archive_one[file] - archive_two[file]) > 5:
+    current_dict = get_dict(current_archive)
+    other_dict = get_dict(other_archive)
+    if set(current_dict.keys()) >= set(other_dict.keys()):
+        for file in other_dict.keys():
+            if current_dict[file] - other_dict[file] < -3:
                 return False
         return True
     return False

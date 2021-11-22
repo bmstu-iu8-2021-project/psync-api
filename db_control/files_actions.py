@@ -8,6 +8,7 @@ from server_control.init import app
 storage = app.config['UPLOAD_FOLDER']
 
 
+# False - надо обновлять
 def is_difference(server_path, content):
     content = {i['name'][i['name'].find(':') + 1:]: i['timestamp'] for i in content}
     archive = ZipFile(server_path, 'r')
@@ -18,35 +19,28 @@ def is_difference(server_path, content):
     if set(content.keys()) - set(archive_content.keys()) == set() and set(archive_content.keys()) - set(
             content.keys()) == set():
         for file in content.keys():
-            if abs(content[file] - archive_content[file]) > 5:
+            if abs(content[file] - archive_content[file]) > 3:
                 return False
         return True
     return False
 
 
+# получаем словарь содержимого папки (включая сами папки)
+# в паре (путь внутри архива, путь к архиву)
 def get_dict(pair):
     folder = pair[1][pair[1].find(':') + 1:]
     archive = ZipFile(join(pair[0]), 'r')
     archive_content = {}
     for file in archive.namelist():
-        archive_content[join('/', file).replace(folder, '')] = time.mktime(
-            tuple(list(archive.getinfo(file).date_time) + [0, 0, 0]))
+        if folder in join('/', file):
+            key = join('/', file).replace(folder, '')
+            if key and key != '/':
+                archive_content[key] = time.mktime(tuple(list(archive.getinfo(file).date_time) + [0, 0, 0]))
     return archive_content
 
 
-# def compare_archives(current_archive, other_archive):
-#     archive_one = get_dict(current_archive)
-#     archive_two = get_dict(other_archive)
-#     if set(archive_one.keys()) - set(archive_two.keys()) == set() and set(archive_two.keys()) - set(
-#             archive_one.keys()) == set():
-#         for file in archive_one.keys():
-#             if abs(archive_one[file] - archive_two[file]) > 5:
-#                 return False
-#         return True
-#     return False
-
-
-def compare_archives(current_archive, other_archive):
+# False - надо сливать
+def need_merge(current_archive, other_archive):
     current_dict = get_dict(current_archive)
     other_dict = get_dict(other_archive)
     if set(current_dict.keys()) >= set(other_dict.keys()):
@@ -88,6 +82,9 @@ def merge(current_archive, other_archive):
     other.close()
     for file in os.listdir(join(storage, other_archive[1])):
         if os.path.isdir(join(storage, other_archive[1], file)):
+            if os.path.exists(join(join(storage, temp, current_archive[1]), file)):
+                # TODO: compare files
+                shutil.rmtree(join(join(storage, temp, current_archive[1]), file))
             shutil.move(join(storage, other_archive[1], file),
                         join(storage, temp, current_archive[1]))
         else:

@@ -633,10 +633,7 @@ def check_synchronized(login, mac):
                   AND coursework.public.resources.id = {pair[1]};
             ''')
             other_pair = cursor.fetchone()
-            if not files_actions.compare_archives(
-                    current_archive=current_pair,
-                    other_archive=other_pair
-            ):
+            if not files_actions.need_merge(current_archive=current_pair, other_archive=other_pair):
                 cursor.execute(f'''
                     SELECT agent_id, path
                     FROM coursework.public.resources

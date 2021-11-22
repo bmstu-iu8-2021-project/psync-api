@@ -1,4 +1,5 @@
 import unittest
+
 from db_control.database_actions import *
 
 
@@ -229,28 +230,40 @@ class TestDatabaseActions(unittest.TestCase):
         self.assertIsNone(synchronize(('three_test_user', 'three_test_mac', 'six_test_folder'),
                                       ('two_test_user', 'two_test_mac', 'three_test_folder')))
 
+        # проверка функции получения пар
         self.assertEqual(len(get_pairs_resource_id('one_test_user', 'one_test_mac')), 8)
         self.assertEqual(len(get_pairs_resource_id('two_test_user', 'two_test_mac')), 8)
         self.assertEqual(len(get_pairs_resource_id('three_test_user', 'three_test_mac')), 8)
 
-        # syncs = json.loads(get_synchronized('one_test_user', 'one_test_mac'))
-        # self.assertEqual(len(syncs), 4)
-        # for rec in syncs:
-        #     rec.pop('current_time')
-        # self.assertIn({'other_login': 'two_test_user', 'current_folder': '', 'other_folder': ''}, syncs)
-        # self.assertIn({'other_login': 'two_test_user', 'current_folder': '', 'other_folder': ''}, syncs)
-        # self.assertIn({'other_login': 'three_test_user', 'current_folder': '', 'other_folder': ''}, syncs)
-        # self.assertIn({'other_login': 'three_test_user', 'current_folder': '', 'other_folder': ''}, syncs)
-        #
-        # syncs = json.loads(get_synchronized('two_test_user', 'two_test_mac'))
-        # self.assertEqual(len(syncs), 4)
-        # for rec in syncs:
-        #     rec.pop('current_time')
-        #
-        # syncs = json.loads(get_synchronized('three_test_user', 'three_test_mac'))
-        # self.assertEqual(len(syncs), 4)
-        # for rec in syncs:
-        #     rec.pop('current_time')
+        syncs = json.loads(get_synchronized('one_test_user', 'one_test_mac'))
+        self.assertEqual(len(syncs), 8)
+        for rec in syncs:
+            rec.pop('other_id')
+            rec.pop('current_time')
+        self.assertIn(
+            {'other_login': 'two_test_user', 'current_folder': 'one_test_folder', 'other_folder': 'three_test_folder'},
+            syncs)
+        self.assertIn(
+            {'other_login': 'two_test_user', 'current_folder': 'one_test_folder', 'other_folder': 'four_test_folder'},
+            syncs)
+        self.assertIn(
+            {'other_login': 'three_test_user', 'current_folder': 'one_test_folder', 'other_folder': 'five_test_folder'},
+            syncs)
+        self.assertIn(
+            {'other_login': 'three_test_user', 'current_folder': 'one_test_folder', 'other_folder': 'six_test_folder'},
+            syncs)
+        self.assertIn(
+            {'other_login': 'two_test_user', 'current_folder': 'two_test_folder', 'other_folder': 'three_test_folder'},
+            syncs)
+        self.assertIn(
+            {'other_login': 'two_test_user', 'current_folder': 'two_test_folder', 'other_folder': 'four_test_folder'},
+            syncs)
+        self.assertIn(
+            {'other_login': 'three_test_user', 'current_folder': 'two_test_folder', 'other_folder': 'five_test_folder'},
+            syncs)
+        self.assertIn(
+            {'other_login': 'three_test_user', 'current_folder': 'two_test_folder', 'other_folder': 'six_test_folder'},
+            syncs)
 
         delete_version('one_test_user', 'one_test_mac', 'one_test_folder', 'test_version')
         delete_version('one_test_user', 'one_test_mac', 'two_test_folder', 'test_version')

@@ -469,17 +469,16 @@ def get_difference(data):
 
 
 def synchronize(current, other):
-    current_agent_id = get_agent_id(current[0], current[1])
-    other_agent_id = get_agent_id(other[0], other[1])
-    current_resource_id = get_resources_id(current_agent_id, current[2])
-    other_resource_id = get_resources_id(other_agent_id, other[2])
+    current_resource_id = get_resources_id(current[0], current[1])
+    other_resource_id = get_resources_id(other[0], other[1])
     if current[0] != other[0]:
         conn = connect()
         with conn.cursor() as cursor:
             cursor.execute(f'''
-                SELECT id 
-                FROM coursework.public.replica_set 
-                WHERE current_resource_id = {other_resource_id} AND other_resource_id = {current_resource_id};
+                SELECT id
+                FROM coursework.public.replica_set
+                WHERE current_resource_id={current_resource_id} AND other_resource_id={other_resource_id} OR
+                current_resource_id={other_resource_id} AND other_resource_id={current_resource_id};
             ''')
             if cursor.fetchone() is None:
                 cursor.execute(f'''
@@ -489,37 +488,25 @@ def synchronize(current, other):
         close(conn)
 
 
-def synchronize_folder(current_login, current_mac, current_folder, other_login, other_folder):
-    current_agent_id = get_agent_id(current_login, current_mac)
-    current_resource_id = get_resources_id(current_agent_id, current_folder)
+def synchronize_folder(sender_login, sender_mac, sender_folder, receiver_id, receiver_folder):
+    current_agent_id = get_agent_id(sender_login, sender_mac)
+    current_resource_id = get_resources_id(current_agent_id, sender_folder)
+    other_resource_id = get_resources_id(receiver_id, receiver_folder)
     conn = connect()
     with conn.cursor() as cursor:
         cursor.execute(f'''
             SELECT path
             FROM coursework.public.versions
-            WHERE resource_id = {current_resource_id};
+            WHERE is_actual = True AND resource_id = {current_resource_id};
         ''')
-        current_pair = (cursor.fetchone()[0], current_folder[current_folder.find('/') + 1:])
-        other_pair = [None, other_folder[other_folder.find('/') + 1:]]
+        current_pair = (cursor.fetchone()[0], sender_folder[sender_folder.find('/') + 1:])
         cursor.execute(f'''
-            SELECT coursework.public.agent.id
-            FROM coursework.public.agent
-                     JOIN coursework.public.persons ON coursework.public.persons.id = coursework.public.agent.person_id
-            WHERE login = '{other_login}';
+            SELECT path
+            FROM coursework.public.versions
+            WHERE is_actual = True AND resource_id = {other_resource_id};
         ''')
-        other_agents_id = [i[0] for i in cursor.fetchall()]
-        for other_agent_id in other_agents_id:
-            cursor.execute(f'''
-                SELECT coursework.public.versions.path
-                FROM coursework.public.versions
-                         JOIN coursework.public.resources ON coursework.public.resources.id = coursework.public.versions.resource_id
-                WHERE agent_id = {other_agent_id} AND coursework.public.resources.path = '{other_folder}';
-            ''')
-            other_version_path = cursor.fetchone()
-            if other_version_path is not None:
-                other_pair[0] = other_version_path[0]
+        other_pair = (cursor.fetchone()[0], receiver_folder[receiver_folder.find('/') + 1:])
     close(conn)
-    other_pair = tuple(other_pair)
     # print(current_pair, other_pair, sep='\n')
     files_actions.merge(current_pair, other_pair)
 

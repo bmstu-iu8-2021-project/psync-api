@@ -275,14 +275,22 @@ def check_actuality():
 @token_required
 def synchronize():
     if request.method == 'GET':
-        other_user = request.args['other_user']
+        other_user = request.args['receiver_login']
         if other_user not in users:
             return str(False)
-        sio.send({'type': 'request_to_synchronize',
-                  'current_user': request.args['current_user'],
-                  'current_folder': request.args['current_folder'],
-                  'current_mac': request.args['current_mac'],
-                  'other_user': request.args['other_user']}, to=request.args['room'])
+        # sio.send({'type': 'request_to_synchronize',
+        #           'current_user': request.args['current_user'],
+        #           'current_folder': request.args['current_folder'],
+        #           'current_mac': request.args['current_mac'],
+        #           'other_user': request.args['other_user']}, to=request.args['room'])
+        data = {
+            'type': 'request_to_synchronize',
+            'sender_login': request.args['sender_login'],
+            'sender_id': database_actions.get_agent_id(request.args['sender_login'], request.args['sender_mac']),
+            'sender_folder': request.args['sender_folder'],
+            'receiver_login': request.args['receiver_login']
+        }
+        sio.send(data, to=request.args['room'])
         return str(True)
     return app.make_response(('Bad request', 400))
 
@@ -292,11 +300,11 @@ def synchronize():
 def synchronize_folder():
     if request.method == 'GET':
         database_actions.synchronize_folder(
-            current_login=request.args['current_login'],
-            current_mac=request.args['current_mac'],
-            other_login=request.args['other_login'],
-            current_folder=request.args['current_folder'],
-            other_folder=request.args['other_folder']
+            sender_login=request.args['sender_login'],
+            sender_mac=request.args['sender_mac'],
+            sender_folder=request.args['sender_folder'],
+            receiver_id=request.args['receiver_id'],
+            receiver_folder=request.args['receiver_folder']
         )
         return str(True)
     return app.make_response(('Bad request', 400))
@@ -344,14 +352,14 @@ users = []
 
 @sio.on('join_room')
 def on_join(data):
-    users.append(data['current_user'])
+    users.append(data['login'])
     room = data['room']
     join_room(room)
 
 
 @sio.on('leave_room')
 def on_leave(data):
-    users.remove(data['current_user'])
+    users.remove(data['login'])
     room = data['room']
     leave_room(room)
 
@@ -360,9 +368,19 @@ def on_leave(data):
 def on_answer(data):
     choice = data['choice']
     data['type'] = 'answer'
-    sio.send(data, to=data['room'])
+    # data['sender_id'] = database_actions.get_agent_id(data['sender_login'], data['sender_mac'])
+    # sio.send(data, to=data['room'])
     if choice:
+        data['sender_id'] = database_actions.get_agent_id(data['sender_login'], data['sender_mac'])
+
+        sio.send(data, to=data['room'])
+        # database_actions.synchronize(
+        #     current=(data['sender_login'], data['sender_mac'], data['sender_folder']),
+        #     other=(data['receiver_login'], data['receiver_mac'], data['receiver_folder'])
+        # )
         database_actions.synchronize(
-            current=(data['current_user'], data['current_mac'], data['current_folder']),
-            other=(data['other_user'], data['other_mac'], data['other_folder'])
+            current=(data['sender_id'], data['sender_folder']),
+            other=(data['receiver_id'], data['receiver_folder'])
         )
+    else:
+        sio.send(data, to=data['room'])

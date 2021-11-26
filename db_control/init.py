@@ -46,7 +46,7 @@ def create():
                 FOREIGN KEY (person_id) REFERENCES persons (id) ON DELETE CASCADE,
                 FOREIGN KEY (host_id) REFERENCES hosts (id) ON DELETE CASCADE
             );
-            
+
             CREATE TABLE IF NOT EXISTS resources
             (
                 id       serial       NOT NULL PRIMARY KEY,
@@ -54,7 +54,7 @@ def create():
                 path     varchar(300) NOT NULL,
                 FOREIGN KEY (agent_id) REFERENCES agent (id) ON DELETE CASCADE
             );
-            
+
             CREATE TABLE IF NOT EXISTS replica_set
             (
                 id                  serial NOT NULL PRIMARY KEY,
@@ -63,7 +63,7 @@ def create():
                 FOREIGN KEY (current_resource_id) REFERENCES resources (id) ON DELETE CASCADE,
                 FOREIGN KEY (other_resource_id) REFERENCES resources (id) ON DELETE CASCADE
             );
-            
+
             CREATE TABLE IF NOT EXISTS versions
             (
                 id          serial       NOT NULL PRIMARY KEY,

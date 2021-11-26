@@ -2,6 +2,7 @@ version: "3.8"
 
 volumes:
   database_volume:
+  storage_volume:
 
 services:
   app:
@@ -10,10 +11,14 @@ services:
     container_name: app_container
     ports:
       - 8080:8080
+    environment:
+      - TZ=Europe/Moscow
     depends_on:
       - database
     env_file:
       - ./.env
+    volumes:
+      - storage_volume:/data/storage
     restart: always
 
   database:
@@ -23,6 +28,6 @@ services:
       - database_volume:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_PASSWORD=PetRigi1504
       - POSTGRES_DB=coursework
     restart: always

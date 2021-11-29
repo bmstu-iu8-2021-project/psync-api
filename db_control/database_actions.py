@@ -55,39 +55,13 @@ def find_login(login):
     conn = connect()
     with conn.cursor() as cursor:
         cursor.execute(f'''
-            SELECT email 
+            SELECT id 
             FROM coursework.public.persons 
             WHERE login = '{login}';
         ''')
-        email = cursor.fetchone()
+        get = cursor.fetchone()
     close(conn)
-    return str(email is None)
-
-
-def find_email(email):
-    conn = connect()
-    with conn.cursor() as cursor:
-        cursor.execute(f'''
-            SELECT login 
-            FROM coursework.public.persons 
-            WHERE email = '{email}';
-        ''')
-        login = cursor.fetchone()
-    close(conn)
-    return str(login is None)
-
-
-def get_email(login):
-    conn = connect()
-    with conn.cursor() as cursor:
-        cursor.execute(f'''
-            SELECT email 
-            FROM coursework.public.persons 
-            WHERE login = '{login}';
-        ''')
-        email = cursor.fetchone()
-    close(conn)
-    return email[0]
+    return str(get is None)
 
 
 def get_password(login):
@@ -157,12 +131,12 @@ def get_resources_id(agent_id, path):
     return resources_id
 
 
-def change(login, field, new_value):
+def change_password(login, new_password):
     conn = connect()
     with conn.cursor() as cursor:
         cursor.execute(f'''
             UPDATE coursework.public.persons
-            SET {field} = '{new_value}'
+            SET password = '{new_password}'
             WHERE login = '{login}';
         ''')
     close(conn)
@@ -185,12 +159,12 @@ def add_host(mac):
     return host_id
 
 
-def add_user(login, mac, email, password):
+def add_user(login, mac, password):
     conn = connect()
     with conn.cursor() as cursor:
         cursor.execute(f'''
-            INSERT INTO coursework.public.persons (login, email, password) 
-            VALUES('{login}', '{email}', '{password}');
+            INSERT INTO coursework.public.persons (login, password) 
+            VALUES('{login}', '{password}');
         ''')
         cursor.execute(f'''
             INSERT INTO coursework.public.hosts (mac)
@@ -300,9 +274,9 @@ def add_version(login, mac, folder_path, version, is_actual):
     close(conn)
 
 
-def update_version(login, mac, path_file, version):
+def update_version(login, mac, folder_path, version):
     agent_id = get_agent_id(login, mac)
-    resource_id = get_resources_id(agent_id, path_file)
+    resource_id = get_resources_id(agent_id, folder_path)
     conn = connect()
     with conn.cursor() as cursor:
         cursor.execute(f'''
@@ -313,9 +287,9 @@ def update_version(login, mac, path_file, version):
     close(conn)
 
 
-def download_folder(login, mac, path, version=None):
+def download_folder(login, mac, folder_path, version=None):
     agent_id = get_agent_id(login, mac)
-    resources_id = get_resources_id(agent_id, path)
+    resources_id = get_resources_id(agent_id, folder_path)
     conn = connect()
     with conn.cursor() as cursor:
         if version is not None:
@@ -366,9 +340,9 @@ def delete_version(login, mac, folder_path, version):
     return path
 
 
-def make_actual(login, mac, path, version):
+def make_actual(login, mac, folder_path, version):
     agent_id = get_agent_id(login, mac)
-    resource_id = get_resources_id(agent_id, path)
+    resource_id = get_resources_id(agent_id, folder_path)
     conn = connect()
     with conn.cursor() as cursor:
         cursor.execute(f'''
@@ -384,9 +358,9 @@ def make_actual(login, mac, path, version):
     close(conn)
 
 
-def make_no_actual(login, mac, path):
+def make_no_actual(login, mac, folder_path):
     agent_id = get_agent_id(login, mac)
-    resource_id = get_resources_id(agent_id, path)
+    resource_id = get_resources_id(agent_id, folder_path)
     conn = connect()
     with conn.cursor() as cursor:
         cursor.execute(f'''
@@ -431,9 +405,9 @@ def get_folders(login, mac):
     return json.dumps(folders)
 
 
-def get_actual_version(login, mac, path):
+def get_actual_version(login, mac, folder_path):
     agent_id = get_agent_id(login, mac)
-    resources_id = get_resources_id(agent_id, path)
+    resources_id = get_resources_id(agent_id, folder_path)
     conn = connect()
     with conn.cursor() as cursor:
         cursor.execute(f'''
@@ -459,7 +433,7 @@ def get_difference(data):
             cursor.execute(f'''
                 SELECT path 
                 FROM coursework.public.versions
-                WHERE resource_id = {resource_id};
+                WHERE resource_id = {resource_id} AND is_actual = True;
             ''')
             server_path = cursor.fetchone()[0]
             if not files_actions.is_difference(server_path=server_path, content=folder['files']):

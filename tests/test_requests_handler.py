@@ -7,10 +7,7 @@ class TestRequestsHandler(unittest.TestCase):
         self.routs = [
             'auth',
             'find_login',
-            'find_email',
-            'get_email',
             'get_password',
-            'change_mail',
             'change_password',
             'add_user',
             'delete_user',
@@ -32,9 +29,7 @@ class TestRequestsHandler(unittest.TestCase):
             'check_synchronized'
         ]
         self.routs_with_token = [
-            'get_email',
             'get_password',
-            'change_mail',
             'change_password',
             'delete_user',
             'find_version',
@@ -57,12 +52,12 @@ class TestRequestsHandler(unittest.TestCase):
 
     def test_url_exist(self):
         for route in self.routs:
-            response = requests.get(f'http://127.0.0.1:8080/{route}/')
+            response = requests.get(f'http://127.0.0.1:12355/{route}/')
             self.assertNotEqual(response.status_code, 404)
 
     def test_url_token(self):
         for route in self.routs_with_token:
-            response = requests.get(f'http://127.0.0.1:8080/{route}/')
+            response = requests.get(f'http://127.0.0.1:12355/{route}/')
             self.assertEqual(response.status_code, 400)
 
 

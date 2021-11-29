@@ -99,3 +99,20 @@ def merge(current_archive, other_archive):
     merged.close()
     shutil.rmtree(join(storage, temp))
     os.rename(join(storage, f'{temp}.zip'), join(current_archive[0]))
+
+
+# def merge(current_archive, other_archive):
+#     temp = str(time.time())
+#     unzip_with_date(current_archive[0], join(storage, temp))
+#
+#     unzip_with_date(other_archive[0], storage[:-1])
+#
+#     for root, dirs, files in os.walk(join(storage, other_archive[1][:other_archive[1].find('/')])):
+#         for file in files:
+#             target = join(root, file).replace(join(storage, other_archive[1]), '')
+#             if os.path.exists(join(storage, temp) + target):
+#                 diff = os.stat(join(storage, temp) + target).st_mtime - os.stat(join(root, file)).st_mtime
+#                 if diff < 3:
+#                     shutil.copy2(join(root, file), join(storage, temp, current_archive[1]))
+#             else:
+#                 shutil.copy2(join(root, file), join(storage, temp, current_archive[1]))

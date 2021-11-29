@@ -56,21 +56,6 @@ def find_login():
     return app.make_response(('Bad request', 400))
 
 
-@app.route('/find_email/', methods=['GET'])
-def find_email():
-    if request.method == 'GET':
-        return database_actions.find_email(email=request.args['email'])
-    return app.make_response(('Bad request', 400))
-
-
-@app.route('/get_email/', methods=['GET'])
-@token_required
-def get_email():
-    if request.method == 'GET':
-        return database_actions.get_email(login=request.args['login'])
-    return app.make_response(('Bad request', 400))
-
-
 @app.route('/get_password/', methods=['GET'])
 @token_required
 def get_password():
@@ -79,27 +64,13 @@ def get_password():
     return app.make_response(('Bad request', 400))
 
 
-@app.route('/change_mail/', methods=['GET'])
-@token_required
-def change_mail():
-    if request.method == 'GET':
-        database_actions.change(
-            login=request.args['login'],
-            field='email',
-            new_value=request.args['email'],
-        )
-        return str(True)
-    return app.make_response(('Bad request', 400))
-
-
 @app.route('/change_password/', methods=['GET'])
 @token_required
 def change_password():
     if request.method == 'GET':
-        database_actions.change(
+        database_actions.change_password(
             login=request.args['login'],
-            field='password',
-            new_value=request.args['password'],
+            new_password=request.args['new_password'],
         )
         return str(True)
     return app.make_response(('Bad request', 400))
@@ -111,7 +82,6 @@ def add_user():
         database_actions.add_user(
             login=request.args['login'],
             mac=request.args['mac'],
-            email=request.args['email'],
             password=request.args['password'],
         )
         return str(True)
@@ -148,8 +118,8 @@ def add_version():
         database_actions.add_version(
             login=files['login'],
             mac=files['mac'],
-            folder_path=files['path_file'],
-            version=files['new_version'],
+            folder_path=files['folder_path'],
+            version=files['version'],
             is_actual=files['is_actual']
         )
         return str(True)
@@ -176,7 +146,7 @@ def update_version():
         database_actions.update_version(
             login=request.args['login'],
             mac=request.args['mac'],
-            path_file=request.args['path_file'],
+            folder_path=request.args['folder_path'],
             version=request.args['version']
         )
         return str(True)
@@ -191,7 +161,7 @@ def download_folder():
         response.data = database_actions.download_folder(
             login=request.args['login'],
             mac=request.args['mac'],
-            path=request.args['path'],
+            folder_path=request.args['folder_path'],
             version=request.args['version'],
         )
         return response
@@ -220,7 +190,7 @@ def make_actual():
         database_actions.make_actual(
             login=request.args['login'],
             mac=request.args['mac'],
-            path=request.args['path'],
+            folder_path=request.args['path'],
             version=request.args['version'],
         )
         return str(True)
@@ -234,7 +204,7 @@ def make_no_actual():
         database_actions.make_no_actual(
             login=request.args['login'],
             mac=request.args['mac'],
-            path=request.args['path'],
+            folder_path=request.args['path'],
         )
         return str(True)
     return app.make_response(('Bad request', 400))
@@ -258,7 +228,7 @@ def get_actual_version():
         return database_actions.get_actual_version(
             login=request.args['login'],
             mac=request.args['mac'],
-            path=request.args['path'],
+            folder_path=request.args['path'],
         )
     return app.make_response(('Bad request', 400))
 
@@ -278,11 +248,6 @@ def synchronize():
         other_user = request.args['receiver_login']
         if other_user not in users:
             return str(False)
-        # sio.send({'type': 'request_to_synchronize',
-        #           'current_user': request.args['current_user'],
-        #           'current_folder': request.args['current_folder'],
-        #           'current_mac': request.args['current_mac'],
-        #           'other_user': request.args['other_user']}, to=request.args['room'])
         data = {
             'type': 'request_to_synchronize',
             'sender_login': request.args['sender_login'],
@@ -368,16 +333,9 @@ def on_leave(data):
 def on_answer(data):
     choice = data['choice']
     data['type'] = 'answer'
-    # data['sender_id'] = database_actions.get_agent_id(data['sender_login'], data['sender_mac'])
-    # sio.send(data, to=data['room'])
     if choice:
         data['sender_id'] = database_actions.get_agent_id(data['sender_login'], data['sender_mac'])
-
         sio.send(data, to=data['room'])
-        # database_actions.synchronize(
-        #     current=(data['sender_login'], data['sender_mac'], data['sender_folder']),
-        #     other=(data['receiver_login'], data['receiver_mac'], data['receiver_folder'])
-        # )
         database_actions.synchronize(
             current=(data['sender_id'], data['sender_folder']),
             other=(data['receiver_id'], data['receiver_folder'])

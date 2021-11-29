@@ -6,14 +6,12 @@ from db_control.database_actions import *
 class TestDatabaseActions(unittest.TestCase):
     def test_access(self):
         # проверка функции добавления пользователя
-        self.assertIsNone(add_user('test_user', 'test_mac', 'test_email', 'test_password'))
+        self.assertIsNone(add_user('test_user', 'test_mac', 'test_password'))
 
         # проверка функций поиска
         self.assertEqual(find_login('test_user'), 'False')
-        self.assertEqual(find_email('test_email'), 'False')
 
         # проверка функций получения
-        self.assertEqual(get_email('test_user'), 'test_email')
         self.assertEqual(get_password('test_user'), 'test_password')
 
         # проверка функции удаления пользователя
@@ -21,28 +19,23 @@ class TestDatabaseActions(unittest.TestCase):
 
         # проверка функций поиска
         self.assertEqual(find_login('test_user'), 'True')
-        self.assertEqual(find_email('test_email'), 'True')
 
         # проверка функций получения
-        self.assertRaises(TypeError, get_email, 'test_user')
         self.assertRaises(TypeError, get_password, 'test_user')
 
     def test_change(self):
-        add_user('test_user', 'test_mac', 'test_email', 'test_password')
+        add_user('test_user', 'test_mac', 'test_password')
 
-        self.assertEqual(get_email('test_user'), 'test_email')
         self.assertEqual(get_password('test_user'), 'test_password')
 
         # проверка функций смены
-        change('test_user', 'email', 'new_test_email')
-        self.assertEqual(get_email('test_user'), 'new_test_email')
-        change('test_user', 'password', 'new_test_password')
+        change_password('test_user', 'new_test_password')
         self.assertEqual(get_password('test_user'), 'new_test_password')
 
         delete_user('test_user')
 
     def test_auth(self):
-        add_user('test_user', 'test_mac', 'test_email',
+        add_user('test_user', 'test_mac',
                  bcrypt.hashpw('test_password'.encode('UTF-8'), bcrypt.gensalt(rounds=5)).decode('UTF-8'))
 
         # проверка функции авторизации
@@ -56,7 +49,7 @@ class TestDatabaseActions(unittest.TestCase):
         # проверка функции добавления версии
         self.assertRaises(TypeError, add_version, 'test_user', 'test_mac', 'test_folder', 'test_version', False)
 
-        add_user('test_user', 'test_mac', 'test_email',
+        add_user('test_user', 'test_mac',
                  bcrypt.hashpw('test_password'.encode('UTF-8'), bcrypt.gensalt(rounds=5)).decode('UTF-8'))
         self.assertTrue(auth('test_user', 'test_password', 'another_test_mac'))
 
@@ -171,9 +164,9 @@ class TestDatabaseActions(unittest.TestCase):
         delete_user('test_user')
 
     def test_synchronization(self):
-        add_user('one_test_user', 'one_test_mac', 'one_test_email', 'test_password')
-        add_user('two_test_user', 'two_test_mac', 'two_test_email', 'test_password')
-        add_user('three_test_user', 'three_test_mac', 'three_test_email', 'test_password')
+        add_user('one_test_user', 'one_test_mac', 'test_password')
+        add_user('two_test_user', 'two_test_mac', 'test_password')
+        add_user('three_test_user', 'three_test_mac', 'test_password')
 
         add_version('one_test_user', 'one_test_mac', 'one_test_folder', 'test_version', True)
         add_version('one_test_user', 'one_test_mac', 'two_test_folder', 'test_version', True)

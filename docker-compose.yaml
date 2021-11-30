@@ -10,7 +10,7 @@ services:
     command: ./wait-for-postgres.sh database python main.py
     container_name: app_container
     ports:
-      - 8080:8080
+      - 12355:12355
     environment:
       - TZ=Europe/Moscow
     depends_on:
@@ -28,6 +28,6 @@ services:
       - database_volume:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=PetRigi1504
+      - POSTGRES_PASSWORD=password
       - POSTGRES_DB=coursework
     restart: always

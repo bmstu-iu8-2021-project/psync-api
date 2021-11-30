@@ -1,0 +1,21 @@
+name: main
+
+on: [push]
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: checkout
+      uses: actions/checkout@v2
+
+    - name: docker-compose remote
+      uses: alex-ac/github-action-ssh-docker-compose@master
+      with:
+        ssh_host: ${{ secrets.DEPLOY_HOST }}
+        ssh_private_key: ${{ secrets.DEPLOY_KEY }}
+        ssh_user: ${{ secrets.DEPLOY_USER }}
+        docker_compose_prefix: psync
+        docker_compose_file: ./docker-compose.yaml

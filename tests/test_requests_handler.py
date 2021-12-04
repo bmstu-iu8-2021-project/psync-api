@@ -60,6 +60,56 @@ class TestRequestsHandler(unittest.TestCase):
             response = requests.get(f'http://127.0.0.1:12355/{route}/')
             self.assertEqual(response.status_code, 400)
 
+    # def test_auth(self):
+    #     # no user
+    #     response = requests.get(
+    #         'http://127.0.0.1:12355/auth/',
+    #         params={
+    #             'login': 'test_user',
+    #             'password': 'test_password',
+    #             'mac': 'test_mac'
+    #         }
+    #     )
+    #     self.assertIn('access', response.json())
+    #     self.assertEqual(response.json()['access'], True)
+    #     self.assertIn('token', response.json())
+    #     self.assertEqual(response.json()['token'], '')
+    #
+    #     # exist user
+    #     requests.get(
+    #         'http://127.0.0.1:12355/add_user/',
+    #         params={
+    #             'login': 'test_user',
+    #             'password': 'test_password',
+    #             'mac': 'test_mac'
+    #         }
+    #     )
+    #     response = requests.get(
+    #         'http://127.0.0.1:12355/auth/',
+    #         params={
+    #             'login': 'test_user',
+    #             'password': 'test_password',
+    #             'mac': 'test_mac'
+    #         }
+    #     )
+    #     self.assertIn('access', response.json())
+    #     self.assertEqual(response.json()['access'], True)
+    #     self.assertIn('token', response.json())
+    #     self.assertNotEqual(response.json()['token'], '')
+    #     response = requests.get(
+    #         'http://127.0.0.1:12355/auth/',
+    #         params={
+    #             'login': 'test_user',
+    #             'password': 'test_password',
+    #             'mac': 'other_test_mac'
+    #         }
+    #     )
+    #     self.assertIn('access', response.json())
+    #     self.assertEqual(response.json()['access'], False)
+    #     self.assertIn('token', response.json())
+    #     self.assertEqual(response.json()['token'], '')
+    #     requests.get('http://127.0.0.1:12355/delete_user/', params={'login': 'test_user'})
+
 
 if __name__ == '__main__':
     unittest.main()

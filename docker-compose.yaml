@@ -13,10 +13,13 @@ services:
       - 12355:12355
     environment:
       - TZ=Europe/Moscow
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
     depends_on:
       - database
-    env_file:
-      - ./.env
     volumes:
       - storage_volume:/data/storage
     restart: always
@@ -27,7 +30,7 @@ services:
     volumes:
       - database_volume:/var/lib/postgresql/data
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=coursework
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     restart: always

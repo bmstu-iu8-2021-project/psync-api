@@ -35,17 +35,22 @@ def auth():
         login = request.args['login']
         password = request.args['password']
         mac = request.args['mac']
-        token = ''
-        if database_actions.auth(
-                login=login,
-                password=password,
-                mac=mac,
-        ):
-            token = jwt.encode({'user': login,
-                                'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
-                                }, app.config['SECRET_KEY'])
-            token = token.decode('UTF-8')
-        return json.dumps({'token': token})
+        answer = {
+            'access': login not in users,
+            'token': ''
+        }
+        if answer['access']:
+            if database_actions.auth(
+                    login=login,
+                    password=password,
+                    mac=mac,
+            ):
+                token = jwt.encode({'user': login,
+                                    'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+                                    }, app.config['SECRET_KEY'])
+                token = token.decode('UTF-8')
+                answer['token'] = token
+        return json.dumps(answer)
     return app.make_response(('Bad request', 400))
 
 

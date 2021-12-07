@@ -4,6 +4,7 @@ import time
 import os
 from os.path import join
 import shutil
+
 from server_control.init import app
 
 storage = app.config['UPLOAD_FOLDER']
@@ -11,7 +12,6 @@ storage = app.config['UPLOAD_FOLDER']
 
 def get_directions(archive):
     folders = set()
-    root = ''
     for item in archive.namelist():
         folders.add('/' + item[:item.rfind('/')])
     return folders
@@ -29,7 +29,7 @@ def is_difference(server_path, content):
         if file[-1] != '/':
             archive_content['/' + file] = time.mktime(tuple(list(archive.getinfo(file).date_time) + [0, 0, 0]))
     dirs = get_directions(archive)
-    dirs.remove(root)
+    dirs.remove(root[root.find(':') + 1:])
     archive.close()
 
     if dirs - set(folders) == set() and set(folders) - dirs == set():
@@ -87,67 +87,6 @@ def unzip_with_date(archive, destination):
             )
 
 
-# # во входе 0 - путь к архиву, 1 - путь к архивируемому, то есть выбранная папка внутри архива
-# # разархивируем архив
-# def merge(current_archive, other_archive):
-#     current = ZipFile(current_archive[0], 'r')
-#     temp = str(time.time())
-#     unzip_with_date(current_archive[0], join(storage, temp))
-#     current.close()
-#
-#     other = ZipFile(other_archive[0], 'r')
-#     unzip_with_date(other_archive[0], storage[:-1])
-#     other.close()
-#     for file in os.listdir(join(storage, other_archive[1])):
-#         if os.path.isdir(join(storage, other_archive[1], file)):
-#             if os.path.exists(join(join(storage, temp, current_archive[1]), file)):
-#                 # TODO: compare files
-#                 shutil.rmtree(join(join(storage, temp, current_archive[1]), file))
-#             shutil.move(join(storage, other_archive[1], file),
-#                         join(storage, temp, current_archive[1]))
-#         else:
-#             shutil.copy2(join(storage, other_archive[1], file),
-#                          join(storage, temp, current_archive[1]))
-#     shutil.rmtree(join(storage, other_archive[1][:other_archive[1].find('/')]))
-#
-#     merged = ZipFile(join(storage, f'{temp}.zip'), 'w')
-#     for root, dirs, files in os.walk(join(storage, temp)):
-#         for file in files:
-#             merged.write(join(root, file), join(root.replace(join(storage, temp), ''), file))
-#     merged.close()
-#     shutil.rmtree(join(storage, temp))
-#     os.rename(join(storage, f'{temp}.zip'), join(current_archive[0]))
-
-# во входе 0 - путь к архиву, 1 - путь к архивируемому, то есть выбранная папка внутри архива
-# разархивируем архив
-# def merge(current_archive, other_archive):
-#     temp = str(time.time() + random.randint(0, 1000000))
-#     unzip_with_date(current_archive[0], join(storage, temp))
-#     unzip_with_date(other_archive[0], storage[:-1])
-#
-#     for root, dirs, files in os.walk(join(storage, other_archive[1][:other_archive[1].find('/')])):
-#         for directory in dirs:
-#             if not len(os.listdir(join(root, directory))):
-#                 shutil.copy2(join(root, directory), join(storage, temp, current_archive[1]))
-#         for file in files:
-#             target = str(join(root, file).replace(join(storage, other_archive[1]), ''))
-#             if os.path.exists(join(storage, temp) + target):
-#                 diff = os.stat(join(storage, temp) + target).st_mtime - os.stat(join(root, file)).st_mtime
-#                 if diff < 3:
-#                     shutil.copy2(join(root, file), join(storage, temp, current_archive[1]))
-#             else:
-#                 shutil.copy2(join(root, file), join(storage, temp, current_archive[1]))
-#
-#     merged = ZipFile(join(storage, f'{temp}.zip'), 'w')
-#     for root, dirs, files in os.walk(join(storage, temp)):
-#         for directory in dirs:
-#             if not len(os.listdir(join(root, directory))):
-#                 merged.write(join(root, directory))
-#         for file in files:
-#             merged.write(join(root, file), join(root.replace(join(storage, temp), ''), file))
-#     shutil.rmtree(join(storage, temp))
-#     os.rename(join(storage, f'{temp}.zip'), join(current_archive[0]))
-
 # рекурсивный алгоритм слияния папок
 def recursive_merge(src, dst):
     # перебираем элементы папки src
@@ -200,4 +139,3 @@ def merge(current_archive, other_archive):
     shutil.rmtree(join(storage, other_archive[1][:other_archive[1].find('/')]))
     # переименовываем полученный архив
     os.rename(join(storage, f'{temp}.zip'), join(current_archive[0]))
-    # print(f"{join(storage, f'{temp}.zip')} -> {current_archive[0]}")

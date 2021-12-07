@@ -2,7 +2,6 @@ import datetime
 import json
 import os
 from functools import wraps
-
 import flask
 from flask import request
 from flask_socketio import join_room, leave_room

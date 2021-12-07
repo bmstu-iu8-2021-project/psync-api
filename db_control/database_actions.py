@@ -436,7 +436,9 @@ def get_difference(data):
                 WHERE resource_id = {resource_id} AND is_actual = True;
             ''')
             server_path = cursor.fetchone()[0]
-            if not files_actions.is_difference(server_path=server_path, content=folder['files']):
+            # if not files_actions.is_difference(server_path=server_path, files=folder['files'],
+            #                                    folders=folder['directories'], root=folder['name']):
+            if not files_actions.is_difference(server_path=server_path, content=folder):
                 to_change['folder'].append(folder['name'])
     close(conn)
     return json.dumps(to_change)

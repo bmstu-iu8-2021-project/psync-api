@@ -1,0 +1,945 @@
+openapi: 3.0.1
+info:
+  description: "API description for server part of my coursework"
+  version: "1.0.0"
+  title: "Server API"
+servers:
+  - url: "http://194.67.110.25:12355"
+paths:
+  /auth/:
+    get:
+      tags:
+        - Main
+      summary: "Authorization user"
+      parameters:
+        - in: query
+          name: login
+          required: true
+          schema:
+            properties:
+              login:
+                type: string
+                example: "username"
+        - in: query
+          name: mac
+          required: true
+          schema:
+            properties:
+              mac:
+                type: string
+                example: "address"
+        - in: query
+          name: password
+          required: true
+          schema:
+            properties:
+              password:
+                type: string
+                example: "password"
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                properties:
+                  access:
+                    type: boolean
+                    example: True
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+        400:
+          description: Bad request
+
+  /find_login/:
+    get:
+      tags:
+        - Main
+      summary: "Check if some login taken"
+      parameters:
+        - in: query
+          name: login
+          required: true
+          schema:
+            properties:
+              login:
+                type: string
+                example: "username"
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                description: "False if login taken, True in opposite"
+                type: string
+                example: "True"
+        400:
+          description: Bad request
+  
+  /get_password/:
+    get:
+      summary: "Return users password"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: login
+          required: true
+          schema:
+            properties:
+              login:
+                type: string
+                example: "username"
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            description: "Access token (jwt)"
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                description: "Hashed password"
+                type: string
+                example: "$2a$12$.rBDPSAW.qmpZs2.mWRUgu1wuOgsgPmdVjQ3S1duLp0KQgiHw7gY6"
+        400:
+          description: Bad request
+
+  /change_password/:
+    get:
+      summary: "Return users password"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: login
+          required: true
+          schema:
+            properties:
+              login:
+                type: string
+                example: "username"
+        - in: query
+          name: password
+          required: true
+          schema:
+            properties:
+              new_password:
+                type: string
+                example: "new_password"
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            description: "Access token (jwt)"
+            type: string
+      responses:
+        200:
+          description: OK
+        400:
+          description: Bad request
+
+  /add_user/:
+    get:
+      summary: "Add new user"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: login
+          required: true
+          schema:
+            properties:
+              login:
+                type: string
+                example: "username"
+        - in: query
+          name: mac-address
+          required: true
+          schema:
+            properties:
+              mac:
+                type: string
+                example: "address"
+        - in: query
+          name: password
+          required: true
+          schema:
+            properties:
+              password:
+                type: string
+                example: "password"
+      responses:
+        200:
+          description: OK
+        400:
+          description: Bad request
+
+  /delete_user/:
+    get:
+      summary: "Delete user"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: login
+          required: true
+          schema:
+            properties:
+              login:
+                type: string
+                example: "username"
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            description: "Access token (jwt)"
+            type: string
+      responses:
+        200:
+          description: OK
+        400:
+          description: Bad request
+
+  /find_version/:
+    get:
+      summary: "Check if name of version taken"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: login
+          required: true
+          schema:
+            properties:
+              login:
+                type: string
+                example: "username"
+        - in: query
+          name: mac-address
+          required: true
+          schema:
+            properties:
+              mac:
+                type: string
+                example: "address"
+        - in: query
+          name: folder-path
+          required: true
+          schema:
+            properties:
+              folder_path:
+                type: string
+                example: "/home/folder"
+        - in: query
+          name: password
+          required: true
+          schema:
+            properties:
+              password:
+                type: string
+                example: "password"
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            description: "Access token (jwt)"
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                description: "False if name taken, True in opposite"
+                type: boolean
+                example: True
+        400:
+          description: Bad request
+
+  /add_version/:
+    get:
+      summary: "Add new version"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: login
+          required: true
+          schema:
+            properties:
+              login:
+                type: string
+                example: "username"
+        - in: query
+          name: mac-address
+          required: true
+          schema:
+            properties:
+              mac:
+                type: string
+                example: "address"
+        - in: query
+          name: folder-path
+          required: true
+          schema:
+            properties:
+              folder_path:
+                type: string
+                example: "/home/folder"
+        - in: query
+          name: version-name
+          required: true
+          schema:
+            properties:
+              version_name:
+                type: string
+                example: "newest"
+        - in: query
+          name: is-actual
+          required: true
+          schema:
+            properties:
+              is_actual:
+                type: boolean
+                example: True
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            description: "Access token (jwt)"
+            type: string
+      responses:
+        200:
+          description: OK
+        400:
+          description: Bad request
+  
+  /update_version/:
+    get:
+      summary: "Update version data in database"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: login
+          required: true
+          schema:
+            properties:
+              login:
+                type: string
+                example: "username"
+        - in: query
+          name: mac-address
+          required: true
+          schema:
+            properties:
+              mac:
+                type: string
+                example: "address"
+        - in: query
+          name: folder-path
+          required: true
+          schema:
+            properties:
+              folder_path:
+                type: string
+                example: "/home/folder"
+        - in: query
+          name: version-name
+          required: true
+          schema:
+            properties:
+              version_name:
+                type: string
+                example: "newest"
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            description: "Access token (jwt)"
+            type: string
+      responses:
+        200:
+          description: OK
+        400:
+          description: Bad request
+  
+  /delete_version/:
+    get:
+      summary: "Delete version"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: login
+          required: true
+          schema:
+            properties:
+              login:
+                type: string
+                example: "username"
+        - in: query
+          name: mac-address
+          required: true
+          schema:
+            properties:
+              mac:
+                type: string
+                example: "address"
+        - in: query
+          name: folder-path
+          required: true
+          schema:
+            properties:
+              folder_path:
+                type: string
+                example: "/home/folder"
+        - in: query
+          name: version-name
+          required: true
+          schema:
+            properties:
+              version_name:
+                type: string
+                example: "newest"
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            description: "Access token (jwt)"
+            type: string
+      responses:
+        200:
+          description: OK
+        400:
+          description: Bad request
+  
+  /make_actual/:
+    get:
+      summary: "Make version actual"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: login
+          required: true
+          schema:
+            properties:
+              login:
+                type: string
+                example: "username"
+        - in: query
+          name: mac-address
+          required: true
+          schema:
+            properties:
+              mac:
+                type: string
+                example: "address"
+        - in: query
+          name: folder-path
+          required: true
+          schema:
+            properties:
+              folder_path:
+                type: string
+                example: "/home/folder"
+        - in: query
+          name: version-name
+          required: true
+          schema:
+            properties:
+              version_name:
+                type: string
+                example: "newest"
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            description: "Access token (jwt)"
+            type: string
+      responses:
+        200:
+          description: OK
+        400:
+          description: Bad request
+
+  /make_no_actual/:
+    get:
+      summary: "Make versions no actual"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: login
+          required: true
+          schema:
+            properties:
+              login:
+                type: string
+                example: "username"
+        - in: query
+          name: mac-address
+          required: true
+          schema:
+            properties:
+              mac:
+                type: string
+                example: "address"
+        - in: query
+          name: folder-path
+          required: true
+          schema:
+            properties:
+              folder_path:
+                type: string
+                example: "/home/folder"
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            description: "Access token (jwt)"
+            type: string
+      responses:
+        200:
+          description: OK
+        400:
+          description: Bad request
+
+  /get_folders/:
+    get:
+      summary: "Return information about all users versions"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: login
+          required: true
+          schema:
+            properties:
+              login:
+                type: string
+                example: "username"
+        - in: query
+          name: mac-address
+          required: true
+          schema:
+            properties:
+              mac:
+                type: string
+                example: "address"
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            description: "Access token (jwt)"
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  oneOf:
+                    - type: object
+                      properties:
+                        folder:
+                          type: string
+                          example: "/home/documents"
+                        version:
+                          type: string
+                          example: "v1.0"
+                        created_at:
+                          type: string
+                          example: "15.11.2021 14:58:09"
+                        is_actual:
+                          type: boolean
+                          example: True
+                    - type: object
+                      properties:
+                        folder:
+                          type: string
+                          example: "/home/music"
+                        version:
+                          type: string
+                          example: "old"
+                        created_at:
+                          type: string
+                          example: "19.12.2021 17:34:45"
+                        is_actual:
+                          type: boolean
+                          example: False
+        400:
+          description: Bad request
+
+  /get_actual_version/:
+    get:
+      summary: "Return name of actual version"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: login
+          required: true
+          schema:
+            properties:
+              login:
+                type: string
+                example: "username"
+        - in: query
+          name: mac-address
+          required: true
+          schema:
+            properties:
+              mac:
+                type: string
+                example: "address"
+        - in: query
+          name: folder-path
+          required: true
+          schema:
+            properties:
+              folder_path:
+                type: string
+                example: "/home/folder"
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            description: "Access token (jwt)"
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                description: "Name of version"
+                type: string
+                example: "v1.0"
+        400:
+          description: Bad request
+
+  /syncronize/:
+    get:
+      summary: "Add new synchronization to database"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: sender-login
+          required: true
+          schema:
+            properties:
+              sender_login:
+                type: string
+                example: "Alice"
+        - in: query
+          name: sender-mac
+          required: true
+          schema:
+            properties:
+              sender_mac:
+                type: string
+                example: "address_A"
+        - in: query
+          name: sender-folder
+          required: true
+          schema:
+            properties:
+              sender_folder:
+                type: string
+                example: "/home/folder"
+        - in: query
+          name: receiver-login
+          required: true
+          schema:
+            properties:
+              receiver_login:
+                type: string
+                example: "Bob"
+        - in: query
+          name: room
+          required: true
+          schema:
+            properties:
+              room:
+                type: string
+                example: "users"
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            description: "Access token (jwt)"
+            type: string
+      responses:
+        200:
+          description: OK
+        400:
+          description: Bad request
+
+  /syncronize_folder/:
+    get:
+      summary: "Merge version`s archives"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: sender-login
+          required: true
+          schema:
+            properties:
+              sender_login:
+                type: string
+                example: "Alice"
+        - in: query
+          name: sender-mac
+          required: true
+          schema:
+            properties:
+              sender_mac:
+                type: string
+                example: "address_A"
+        - in: query
+          name: sender-folder
+          required: true
+          schema:
+            properties:
+              sender_folder:
+                type: string
+                example: "/home/folder"
+        - in: query
+          name: receiver-id
+          required: true
+          schema:
+            properties:
+              receiver_id:
+                type: integer
+                example: 12
+        - in: query
+          name: receiver-folder
+          required: true
+          schema:
+            properties:
+              receiver_folder:
+                type: string
+                example: "home/Bob/files"
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            description: "Access token (jwt)"
+            type: string
+      responses:
+        200:
+          description: OK
+        400:
+          description: Bad request
+
+  /terminate_sync/:
+    get:
+      summary: "Merge version`s archives"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: current-login
+          required: true
+          schema:
+            properties:
+              current_login:
+                type: string
+                example: "Alice"
+        - in: query
+          name: other-id
+          required: true
+          schema:
+            properties:
+              other_id:
+                type: integer
+                example: 5
+        - in: query
+          name: current-folder
+          required: true
+          schema:
+            properties:
+              current_folder:
+                type: string
+                example: "/home/folder"
+        - in: query
+          name: other-folder
+          required: true
+          schema:
+            properties:
+              other_folder:
+                type: string
+                example: "home/files"
+        - in: query
+          name: current-mac
+          required: true
+          schema:
+            properties:
+              current_mac:
+                type: string
+                example: "address"
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            description: "Access token (jwt)"
+            type: string
+      responses:
+        200:
+          description: OK
+        400:
+          description: Bad request
+
+  /get_synchronized/:
+    get:
+      summary: "Merge version`s archives"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: login
+          required: true
+          schema:
+            properties:
+              login:
+                type: string
+                example: "username"
+        - in: query
+          name: mac-address
+          required: true
+          schema:
+            properties:
+              mac:
+                type: string
+                example: "address"
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            description: "Access token (jwt)"
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  oneOf:
+                    - type: object
+                      properties:
+                        other_id:
+                          type: integer
+                          example: 15
+                        other_login:
+                          type: string
+                          example: "Ivan"
+                        current_folder:
+                          type: string
+                          example: "/home/peter/music"
+                        other_folder:
+                          type: string
+                          example: "/home/ivan/sounds"
+                        current_time:
+                          type: string
+                          example: "19.12.2021 17:34:45"
+                    - type: object
+                      properties:
+                        other_id:
+                          type: integer
+                          example: 26
+                        other_login:
+                          type: string
+                          example: "Anton"
+                        current_folder:
+                          type: string
+                          example: "/home/peter/documents"
+                        other_folder:
+                          type: string
+                          example: "/home/anton/files"
+                        current_time:
+                          type: string
+                          example: "12.11.2021 10:55:43"
+        400:
+          description: Bad request
+
+  /check_synchronized/:
+    get:
+      summary: "Merge version`s archives"
+      tags:
+        - Main
+      parameters:
+        - in: query
+          name: login
+          required: true
+          schema:
+            properties:
+              login:
+                type: string
+                example: "username"
+        - in: query
+          name: mac-address
+          required: true
+          schema:
+            properties:
+              mac:
+                type: string
+                example: "address"
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            description: "Access token (jwt)"
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  oneOf:
+                    - type: object
+                      properties:
+                        other_id:
+                          type: integer
+                          example: 15
+                        other_user:
+                          type: string
+                          example: "Ivan"
+                        current_folder:
+                          type: string
+                          example: "/home/peter/music"
+                        other_folder:
+                          type: string
+                          example: "/home/ivan/sounds"
+                    - type: object
+                      properties:
+                        other_id:
+                          type: integer
+                          example: 14
+                        other_user:
+                          type: string
+                          example: "Dmitrii"
+                        current_folder:
+                          type: string
+                          example: "/home/peter/music"
+                        other_folder:
+                          type: string
+                          example: "/home/dima/sounds"
+        400:
+          description: Bad request      
